@@ -82,7 +82,7 @@ export async function GET(request: Request) {
           body: JSON.stringify({
             query,
             pageSize: 15,
-            dataType: ["Foundation", "SR Legacy", "Branded"],
+            dataType: ["Foundation", "SR Legacy"],
           }),
         }
       );
