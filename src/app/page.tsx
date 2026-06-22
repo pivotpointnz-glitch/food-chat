@@ -53,12 +53,17 @@ export default async function HomePage() {
             {new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
           </h1>
         </div>
-        <Link
-          href="/profile"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-sm font-medium text-neutral-700"
-        >
-          {profile?.display_name?.[0]?.toUpperCase() ?? "?"}
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/foods" className="text-sm font-medium text-neutral-500">
+            My foods
+          </Link>
+          <Link
+            href="/profile"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-sm font-medium text-neutral-700"
+          >
+            {profile?.display_name?.[0]?.toUpperCase() ?? "?"}
+          </Link>
+        </div>
       </div>
 
       <div className="mt-6 space-y-4 rounded-2xl border border-neutral-100 bg-white p-4 shadow-sm">
