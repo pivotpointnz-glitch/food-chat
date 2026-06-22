@@ -72,13 +72,20 @@ export async function GET(request: Request) {
     .select("*")
     .ilike("name", `%${query}%`)
     .or(`owner_id.eq.${user.id},visibility.eq.shared,owner_id.is.null`)
-    .limit(40);
+    .limit(60);
 
   if (personalError) {
     return NextResponse.json({ error: personalError.message }, { status: 500 });
   }
 
-  const personal = (personalRaw ?? [])
+  // Exclude leftover branded-product USDA cache entries (from before we
+  // restricted live USDA search to generic Foundation/SR Legacy data only).
+  // Your own custom foods are never excluded, regardless of their brand field.
+  const personalFiltered = (personalRaw ?? []).filter(
+    (f) => f.source === "custom" || !f.brand
+  );
+
+  const personal = personalFiltered
     .sort((a, b) => relevanceScore(a.name, query) - relevanceScore(b.name, query))
     .slice(0, 8);
 
