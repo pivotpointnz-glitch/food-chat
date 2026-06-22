@@ -22,9 +22,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No transcript provided" }, { status: 400 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const rawApiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = rawApiKey?.trim();
+
   if (!apiKey) {
     return NextResponse.json({ error: "Voice parsing is not configured" }, { status: 500 });
+  }
+
+  // eslint-disable-next-line no-control-regex
+  if (!/^[\x00-\xFF]*$/.test(apiKey)) {
+    return NextResponse.json(
+      {
+        error:
+          "The ANTHROPIC_API_KEY environment variable contains an invalid (non-ASCII) character. This usually happens when the key is copy-pasted with hidden formatting. Re-copy the key directly from the Anthropic Console (avoid copying from rendered web pages or documents) and re-save it in Vercel.",
+      },
+      { status: 500 }
+    );
   }
 
   const anthropic = new Anthropic({ apiKey });
