@@ -226,6 +226,13 @@ export default function NewLogPage() {
         className="mt-4 w-full rounded-lg border border-neutral-300 px-3 py-3 text-base focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
       />
 
+      <button
+        onClick={() => router.push("/foods/new")}
+        className="mt-3 text-sm font-medium text-emerald-600"
+      >
+        + Create a custom food or recipe
+      </button>
+
       {searching && <p className="mt-3 text-sm text-neutral-400">Searching…</p>}
 
       {personalResults.length > 0 && (
