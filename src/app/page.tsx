@@ -54,6 +54,9 @@ export default async function HomePage() {
           </h1>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/history" className="text-sm font-medium text-neutral-500">
+            History
+          </Link>
           <Link href="/foods" className="text-sm font-medium text-neutral-500">
             My foods
           </Link>

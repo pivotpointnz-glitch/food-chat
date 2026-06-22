@@ -19,6 +19,11 @@ export default function ProfilePage() {
   const [targetCarbs, setTargetCarbs] = useState<string>("");
   const [targetFat, setTargetFat] = useState<string>("");
 
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
+
   useEffect(() => {
     async function load() {
       const supabase = createClient();
@@ -75,6 +80,25 @@ export default function ProfilePage() {
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
+  }
+
+  async function handleResetHistory() {
+    setResetting(true);
+    setResetError(null);
+    setResetMessage(null);
+
+    const res = await fetch("/api/logs/reset", { method: "DELETE" });
+    const data = await res.json();
+
+    setResetting(false);
+
+    if (data.error) {
+      setResetError(data.error);
+      return;
+    }
+
+    setResetConfirmText("");
+    setResetMessage(`Cleared ${data.deletedCount} log entr${data.deletedCount === 1 ? "y" : "ies"}.`);
   }
 
   if (loading) {
@@ -171,6 +195,35 @@ export default function ProfilePage() {
       >
         Log out
       </button>
+
+      <div className="mt-10 rounded-xl border border-red-100 bg-red-50/50 p-4">
+        <h2 className="text-sm font-semibold text-red-700">Danger zone</h2>
+        <p className="mt-1 text-xs text-red-600">
+          This permanently deletes all of your logged food entries (every day, week, and month of
+          history). Your custom foods and recipes are not affected — only the log itself.
+        </p>
+
+        <label className="mt-3 block text-xs font-medium text-red-700">
+          Type RESET to confirm
+        </label>
+        <input
+          type="text"
+          value={resetConfirmText}
+          onChange={(e) => setResetConfirmText(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-red-200 px-3 py-2 text-sm focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400"
+        />
+
+        {resetError && <p className="mt-2 text-xs text-red-700">{resetError}</p>}
+        {resetMessage && <p className="mt-2 text-xs text-emerald-700">{resetMessage}</p>}
+
+        <button
+          onClick={handleResetHistory}
+          disabled={resetConfirmText !== "RESET" || resetting}
+          className="mt-3 w-full rounded-lg bg-red-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-40"
+        >
+          {resetting ? "Clearing history…" : "Reset all history"}
+        </button>
+      </div>
     </div>
   );
 }
