@@ -1,0 +1,176 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import type { Profile } from "@/lib/types";
+
+export default function ProfilePage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedMessage, setSavedMessage] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [displayName, setDisplayName] = useState("");
+  const [targetCalories, setTargetCalories] = useState<string>("");
+  const [targetProtein, setTargetProtein] = useState<string>("");
+  const [targetCarbs, setTargetCarbs] = useState<string>("");
+  const [targetFat, setTargetFat] = useState<string>("");
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      if (data) {
+        setProfile(data);
+        setDisplayName(data.display_name ?? "");
+        setTargetCalories(data.target_calories?.toString() ?? "");
+        setTargetProtein(data.target_protein_g?.toString() ?? "");
+        setTargetCarbs(data.target_carbs_g?.toString() ?? "");
+        setTargetFat(data.target_fat_g?.toString() ?? "");
+      }
+      setLoading(false);
+    }
+    load();
+  }, [router]);
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    setSavedMessage(false);
+
+    const res = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        displayName,
+        targetCalories: targetCalories === "" ? null : Number(targetCalories),
+        targetProteinG: targetProtein === "" ? null : Number(targetProtein),
+        targetCarbsG: targetCarbs === "" ? null : Number(targetCarbs),
+        targetFatG: targetFat === "" ? null : Number(targetFat),
+      }),
+    });
+
+    const data = await res.json();
+    setSaving(false);
+
+    if (data.error) {
+      setError(data.error);
+      return;
+    }
+
+    setSavedMessage(true);
+    setTimeout(() => setSavedMessage(false), 2000);
+  }
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-md flex-1 px-4 pt-6">
+        <p className="text-center text-sm text-neutral-400">Loading…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-md flex-1 px-4 pb-24 pt-6">
+      <button onClick={() => router.push("/")} className="text-sm font-medium text-emerald-600">
+        ← Back
+      </button>
+
+      <h1 className="mt-3 text-xl font-semibold text-neutral-900">Profile &amp; targets</h1>
+
+      <div className="mt-5">
+        <label className="block text-sm font-medium text-neutral-700">Display name</label>
+        <input
+          type="text"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+      </div>
+
+      <div className="mt-6">
+        <h2 className="text-sm font-semibold text-neutral-700">Daily targets</h2>
+        <p className="mt-1 text-xs text-neutral-500">
+          Leave any field blank if you don&rsquo;t want to track a target for it — the dashboard
+          will just show your totals with no progress bar.
+        </p>
+
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700">Calories (kcal)</label>
+            <input
+              type="number"
+              value={targetCalories}
+              onChange={(e) => setTargetCalories(e.target.value)}
+              placeholder="e.g. 2200"
+              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700">Protein (g)</label>
+            <input
+              type="number"
+              value={targetProtein}
+              onChange={(e) => setTargetProtein(e.target.value)}
+              placeholder="e.g. 150"
+              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700">Carbs (g)</label>
+            <input
+              type="number"
+              value={targetCarbs}
+              onChange={(e) => setTargetCarbs(e.target.value)}
+              placeholder="e.g. 200"
+              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700">Fat (g)</label>
+            <input
+              type="number"
+              value={targetFat}
+              onChange={(e) => setTargetFat(e.target.value)}
+              placeholder="e.g. 70"
+              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {savedMessage && <p className="mt-4 text-sm text-emerald-600">Saved.</p>}
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="mt-6 w-full rounded-lg bg-emerald-600 px-3 py-3 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+      >
+        {saving ? "Saving…" : "Save changes"}
+      </button>
+
+      <button
+        onClick={handleLogout}
+        className="mt-3 w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm font-medium text-neutral-600 transition hover:border-red-200 hover:text-red-600"
+      >
+        Log out
+      </button>
+    </div>
+  );
+}
