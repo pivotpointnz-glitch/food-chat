@@ -1,0 +1,20 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="96" fill="#059669"/>
+  <g transform="translate(256,256)">
+    <!-- Fork -->
+    <g transform="translate(-70,0)">
+      <rect x="-10" y="-140" width="20" height="280" rx="10" fill="white"/>
+      <rect x="-46" y="-140" width="14" height="90" rx="7" fill="white"/>
+      <rect x="-18" y="-140" width="14" height="90" rx="7" fill="white"/>
+      <rect x="10" y="-140" width="14" height="90" rx="7" fill="white"/>
+      <rect x="32" y="-140" width="14" height="90" rx="7" fill="white"/>
+      <path d="M -46 -50 Q -46 -10 -10 0 L -10 -50 Z" fill="white"/>
+      <path d="M 46 -50 Q 46 -10 10 0 L 10 -50 Z" fill="white"/>
+    </g>
+    <!-- Leaf -->
+    <g transform="translate(90,-10) rotate(20)">
+      <path d="M0,-110 C60,-110 100,-60 100,0 C100,60 60,90 0,110 C-40,80 -60,40 -60,-10 C-60,-60 -40,-100 0,-110 Z" fill="white"/>
+      <path d="M0,-95 L0,100" stroke="#059669" stroke-width="8" stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>
