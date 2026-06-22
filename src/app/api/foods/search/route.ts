@@ -78,9 +78,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: personalError.message }, { status: 500 });
   }
 
-  // Exclude leftover branded-product USDA cache entries (from before we
-  // restricted live USDA search to generic Foundation/SR Legacy data only).
-  // Your own custom foods are never excluded, regardless of their brand field.
+  // Exclude any cached entry with a brand attached (covers leftover USDA
+  // branded-product cache rows from before this filter existed). Your own
+  // custom foods are never excluded, even if you happened to fill in a
+  // brand field for one.
   const personalFiltered = (personalRaw ?? []).filter(
     (f) => f.source === "custom" || !f.brand
   );
@@ -121,7 +122,15 @@ export async function GET(request: Request) {
         const data = await usdaRes.json();
         const foods: UsdaFood[] = data.foods ?? [];
 
+        // TEMP DEBUG: log what USDA actually returns, to diagnose why
+        // branded items appear despite the Foundation/SR Legacy filter.
+        console.log(
+          "USDA raw results:",
+          foods.map((f) => ({ dataType: f.dataType, brandOwner: f.brandOwner, description: f.description }))
+        );
+
         usdaResults = foods
+          .filter((f) => !f.brandOwner) // belt-and-suspenders: drop anything with a brand owner, regardless of dataType
           .map((f) => ({
             fdcId: f.fdcId,
             name: f.description,
