@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { Food } from "@/lib/types";
+import { ALL_UNITS, toGramsEquivalent } from "@/lib/units";
 
 interface UsdaResult {
   fdcId: number;
@@ -18,6 +19,7 @@ interface ComponentRow {
   food: Food;
   quantity: number;
   unit: string;
+  gramsPerEach: number | null; // only used when unit === "each"
   gramsEquivalent: number;
 }
 
@@ -67,9 +69,17 @@ export default function NewFoodPage() {
   }, [componentQuery, runSearch]);
 
   function addComponent(food: Food) {
+    const unit = food.default_unit in { g: 1, ml: 1 } ? food.default_unit : "g";
+    const quantity = food.default_quantity;
     setComponents((prev) => [
       ...prev,
-      { food, quantity: food.default_quantity, unit: food.default_unit, gramsEquivalent: food.default_quantity },
+      {
+        food,
+        quantity,
+        unit,
+        gramsPerEach: food.grams_per_default_unit ?? null,
+        gramsEquivalent: toGramsEquivalent(quantity, unit, food.grams_per_default_unit),
+      },
     ]);
     setComponentQuery("");
     setPersonalResults([]);
@@ -88,7 +98,31 @@ export default function NewFoodPage() {
 
   function updateComponentQuantity(index: number, quantity: number) {
     setComponents((prev) =>
-      prev.map((c, i) => (i === index ? { ...c, quantity, gramsEquivalent: quantity } : c))
+      prev.map((c, i) =>
+        i === index
+          ? { ...c, quantity, gramsEquivalent: toGramsEquivalent(quantity, c.unit, c.gramsPerEach) }
+          : c
+      )
+    );
+  }
+
+  function updateComponentUnit(index: number, unit: string) {
+    setComponents((prev) =>
+      prev.map((c, i) =>
+        i === index
+          ? { ...c, unit, gramsEquivalent: toGramsEquivalent(c.quantity, unit, c.gramsPerEach) }
+          : c
+      )
+    );
+  }
+
+  function updateComponentGramsPerEach(index: number, gramsPerEach: number) {
+    setComponents((prev) =>
+      prev.map((c, i) =>
+        i === index
+          ? { ...c, gramsPerEach, gramsEquivalent: toGramsEquivalent(c.quantity, c.unit, gramsPerEach) }
+          : c
+      )
     );
   }
 
@@ -358,17 +392,10 @@ export default function NewFoodPage() {
               {components.map((c, i) => (
                 <div
                   key={`${c.food.id}-${i}`}
-                  className="flex items-center justify-between rounded-lg border border-neutral-100 bg-white px-3 py-2"
+                  className="rounded-lg border border-neutral-100 bg-white px-3 py-2"
                 >
-                  <span className="text-sm text-neutral-800">{c.food.name}</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      value={c.quantity}
-                      onChange={(e) => updateComponentQuantity(i, Number(e.target.value))}
-                      className="w-16 rounded border border-neutral-200 px-2 py-1 text-right text-sm"
-                    />
-                    <span className="text-xs text-neutral-500">{c.food.base_unit}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-neutral-800">{c.food.name}</span>
                     <button
                       onClick={() => removeComponent(i)}
                       className="text-neutral-400 hover:text-red-500"
@@ -376,6 +403,40 @@ export default function NewFoodPage() {
                     >
                       ✕
                     </button>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={c.quantity}
+                      onChange={(e) => updateComponentQuantity(i, Number(e.target.value))}
+                      className="w-16 rounded border border-neutral-200 px-2 py-1 text-right text-sm"
+                    />
+                    <select
+                      value={c.unit}
+                      onChange={(e) => updateComponentUnit(i, e.target.value)}
+                      className="rounded border border-neutral-200 px-2 py-1 text-sm"
+                    >
+                      {ALL_UNITS.map((u) => (
+                        <option key={u.value} value={u.value}>
+                          {u.label}
+                        </option>
+                      ))}
+                    </select>
+                    {c.unit === "each" && (
+                      <span className="flex items-center gap-1 text-xs text-neutral-500">
+                        =
+                        <input
+                          type="number"
+                          value={c.gramsPerEach ?? 0}
+                          onChange={(e) => updateComponentGramsPerEach(i, Number(e.target.value))}
+                          className="w-14 rounded border border-neutral-200 px-1 py-1 text-right text-sm"
+                        />
+                        g each
+                      </span>
+                    )}
+                    <span className="ml-auto text-xs text-neutral-400">
+                      ≈{Math.round(c.gramsEquivalent)}g
+                    </span>
                   </div>
                 </div>
               ))}
