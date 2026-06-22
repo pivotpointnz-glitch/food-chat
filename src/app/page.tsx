@@ -111,6 +111,13 @@ export default async function HomePage() {
       </div>
 
       <Link
+        href="/log/voice"
+        className="fixed bottom-6 left-[calc(50%-4.5rem)] flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full bg-white text-xl text-neutral-700 shadow-lg ring-1 ring-neutral-200 transition hover:bg-neutral-50"
+        aria-label="Log food by voice"
+      >
+        🎙️
+      </Link>
+      <Link
         href="/log/new"
         className="fixed bottom-6 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-emerald-600 text-2xl text-white shadow-lg transition hover:bg-emerald-700"
         aria-label="Log food"
