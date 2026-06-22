@@ -9,6 +9,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from "recharts";
 import { LogRow } from "@/components/LogRow";
@@ -207,9 +208,9 @@ export default function HistoryPage() {
                 </div>
               )}
 
-              <div className="mt-4 h-48 rounded-2xl border border-neutral-100 bg-white p-2 shadow-sm">
+              <div className="mt-4 h-56 rounded-2xl border border-neutral-100 bg-white p-2 shadow-sm">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={rangeDays} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
+                  <LineChart data={rangeDays} margin={{ top: 8, right: 8, bottom: 0, left: -8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f1f1" />
                     <XAxis
                       dataKey="date"
@@ -217,15 +218,57 @@ export default function HistoryPage() {
                       tickFormatter={(d) => formatDisplayDate(d).split(" ")[0]}
                       interval={tab === "month" ? 4 : 0}
                     />
-                    <YAxis tick={{ fontSize: 10 }} />
+                    <YAxis yAxisId="calories" tick={{ fontSize: 10 }} width={36} />
+                    <YAxis yAxisId="grams" orientation="right" tick={{ fontSize: 10 }} width={32} />
                     <Tooltip
                       labelFormatter={(d) => formatDisplayDate(d as string)}
-                      formatter={(value) => [`${Math.round(Number(value) || 0)} kcal`, "Calories"]}
+                      formatter={(value, name) => [
+                        `${Math.round(Number(value) || 0)}${name === "calories" ? " kcal" : "g"}`,
+                        typeof name === "string" ? name[0].toUpperCase() + name.slice(1) : name,
+                      ]}
                     />
-                    <Line type="monotone" dataKey="calories" stroke="#059669" strokeWidth={2} dot={false} />
+                    <Legend
+                      wrapperStyle={{ fontSize: 11 }}
+                      formatter={(value) => value[0].toUpperCase() + value.slice(1)}
+                    />
+                    <Line
+                      yAxisId="calories"
+                      type="monotone"
+                      dataKey="calories"
+                      stroke="#059669"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      yAxisId="grams"
+                      type="monotone"
+                      dataKey="protein"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      yAxisId="grams"
+                      type="monotone"
+                      dataKey="carbs"
+                      stroke="#f59e0b"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      yAxisId="grams"
+                      type="monotone"
+                      dataKey="fat"
+                      stroke="#fb7185"
+                      strokeWidth={2}
+                      dot={false}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
+              <p className="mt-1 text-center text-[11px] text-neutral-400">
+                Left axis: calories (kcal) · Right axis: protein/carbs/fat (g)
+              </p>
 
               <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm">
                 <table className="w-full text-sm">
