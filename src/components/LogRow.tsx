@@ -21,6 +21,7 @@ export function LogRow({ log }: { log: LogEntryWithFood }) {
           {log.quantity}
           {log.unit} · {mealLabels[log.meal_type] ?? log.meal_type} · {time}
           {log.source === "voice" && " · 🎙️"}
+          {log.source === "photo" && " · 📷"}
         </p>
       </div>
       <div className="text-right text-sm text-neutral-700">

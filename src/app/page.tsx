@@ -127,6 +127,13 @@ export default async function HomePage() {
       >
         +
       </Link>
+      <Link
+        href="/log/photo"
+        className="fixed bottom-6 left-[calc(50%+4.5rem)] flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full bg-white text-xl text-neutral-700 shadow-lg ring-1 ring-neutral-200 transition hover:bg-neutral-50"
+        aria-label="Log food by photo"
+      >
+        📷
+      </Link>
     </div>
   );
 }

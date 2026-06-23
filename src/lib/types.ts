@@ -6,7 +6,7 @@ export type FoodSource = "usda" | "custom";
 export type FoodVisibility = "private" | "shared";
 export type BaseUnit = "g" | "ml";
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
-export type LogSource = "manual" | "voice";
+export type LogSource = "manual" | "voice" | "photo";
 
 export interface Profile {
   id: string;
