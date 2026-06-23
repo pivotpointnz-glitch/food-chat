@@ -13,6 +13,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { LogRow } from "@/components/LogRow";
+import { exportHistoryToSpreadsheet } from "@/lib/exportHistory";
 import type { LogEntryWithFood } from "@/lib/types";
 
 type Tab = "day" | "week" | "month";
@@ -47,6 +48,7 @@ export default function HistoryPage() {
   // Week/month view state
   const [rangeDays, setRangeDays] = useState<DayTotal[]>([]);
   const [rangeLoading, setRangeLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const loadDay = useCallback(async (date: string) => {
     setDayLoading(true);
@@ -94,6 +96,35 @@ export default function HistoryPage() {
       }
     : null;
 
+  async function handleExport() {
+    setExporting(true);
+    try {
+      let start: string;
+      let end: string;
+
+      if (tab === "day") {
+        start = selectedDate;
+        end = selectedDate;
+      } else {
+        end = toDateString(new Date());
+        const startD = new Date();
+        startD.setDate(startD.getDate() - (tab === "week" ? 6 : 29));
+        start = toDateString(startD);
+      }
+
+      const res = await fetch(`/api/history/export?start=${start}&end=${end}`);
+      const data = await res.json();
+
+      exportHistoryToSpreadsheet(
+        data.days ?? [],
+        (data.logs ?? []) as LogEntryWithFood[],
+        `${start}_to_${end}`
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="mx-auto w-full max-w-md flex-1 px-4 pb-24 pt-6">
       <button onClick={() => router.push("/")} className="text-sm font-medium text-emerald-600">
@@ -117,6 +148,14 @@ export default function HistoryPage() {
           </button>
         ))}
       </div>
+
+      <button
+        onClick={handleExport}
+        disabled={exporting}
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-600 transition hover:border-emerald-200 hover:text-emerald-700 disabled:opacity-50"
+      >
+        {exporting ? "Preparing download…" : `⬇ Download ${tab} as spreadsheet`}
+      </button>
 
       {tab === "day" && (
         <div className="mt-5">
