@@ -7,6 +7,12 @@ import { LogRow } from "@/components/LogRow";
 import { startOfTodayNZ_ISO, todayDisplayNZ } from "@/lib/nzTime";
 import type { LogEntryWithFood, Profile } from "@/lib/types";
 
+// Explicitly dynamic: this page reads the user's session via cookies and
+// shows per-user data. Forcing dynamic rendering prevents any possibility
+// of a cached response (with its Set-Cookie / session data) being served
+// to a different user, and avoids any caching-related session weirdness.
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const supabase = await createClient();
 
