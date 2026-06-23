@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Camera } from "lucide-react";
 import { resizeImageToBase64 } from "@/lib/imageResize";
 import { ConfirmItemsList, type RawParsedItem } from "@/components/ConfirmItemsList";
 
@@ -77,10 +78,10 @@ export default function PhotoLogPage() {
         <div className="mt-10 flex flex-col items-center">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex h-24 w-24 items-center justify-center rounded-full bg-emerald-600 text-3xl text-white shadow-lg transition hover:bg-emerald-700"
+            className="flex h-24 w-24 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg transition hover:bg-emerald-700"
             aria-label="Take photo"
           >
-            📷
+            <Camera size={36} strokeWidth={2} />
           </button>
           <p className="mt-3 text-sm text-neutral-500">Tap to take a photo</p>
         </div>

@@ -1,3 +1,4 @@
+import { Mic, Camera } from "lucide-react";
 import type { LogEntryWithFood } from "@/lib/types";
 
 const mealLabels: Record<string, string> = {
@@ -17,11 +18,13 @@ export function LogRow({ log }: { log: LogEntryWithFood }) {
     <div className="flex items-center justify-between border-b border-neutral-100 py-3 last:border-0">
       <div>
         <p className="text-sm font-medium text-neutral-900">{log.food.name}</p>
-        <p className="text-xs text-neutral-500">
-          {log.quantity}
-          {log.unit} · {mealLabels[log.meal_type] ?? log.meal_type} · {time}
-          {log.source === "voice" && " · 🎙️"}
-          {log.source === "photo" && " · 📷"}
+        <p className="flex items-center gap-1 text-xs text-neutral-500">
+          <span>
+            {log.quantity}
+            {log.unit} · {mealLabels[log.meal_type] ?? log.meal_type} · {time}
+          </span>
+          {log.source === "voice" && <Mic size={12} strokeWidth={2} className="text-neutral-400" />}
+          {log.source === "photo" && <Camera size={12} strokeWidth={2} className="text-neutral-400" />}
         </p>
       </div>
       <div className="text-right text-sm text-neutral-700">

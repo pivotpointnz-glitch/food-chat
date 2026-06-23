@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Mic } from "lucide-react";
 import { useSpeechRecognition } from "@/lib/useSpeechRecognition";
 import { ConfirmItemsList, type RawParsedItem } from "@/components/ConfirmItemsList";
 
@@ -66,12 +67,12 @@ export default function VoiceLogPage() {
             <div className="mt-10 flex flex-col items-center">
               <button
                 onClick={isListening ? stop : start}
-                className={`flex h-24 w-24 items-center justify-center rounded-full text-3xl text-white shadow-lg transition ${
+                className={`flex h-24 w-24 items-center justify-center rounded-full text-white shadow-lg transition ${
                   isListening ? "bg-red-500 animate-pulse" : "bg-emerald-600 hover:bg-emerald-700"
                 }`}
                 aria-label={isListening ? "Stop recording" : "Start recording"}
               >
-                🎙️
+                <Mic size={36} strokeWidth={2} />
               </button>
               <p className="mt-3 text-sm text-neutral-500">
                 {isListening ? "Listening… tap to stop" : "Tap to start"}

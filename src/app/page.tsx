@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Mic, Camera, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { MacroProgress } from "@/components/MacroProgress";
 import { LogRow } from "@/components/LogRow";
@@ -115,24 +116,24 @@ export default async function HomePage() {
 
       <Link
         href="/log/voice"
-        className="fixed bottom-6 left-[calc(50%-4.5rem)] flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full bg-white text-xl text-neutral-700 shadow-lg ring-1 ring-neutral-200 transition hover:bg-neutral-50"
+        className="fixed bottom-6 left-[calc(50%-4.5rem)] flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full bg-white text-neutral-700 shadow-lg ring-1 ring-neutral-200 transition hover:bg-neutral-50"
         aria-label="Log food by voice"
       >
-        🎙️
+        <Mic size={20} strokeWidth={2} />
       </Link>
       <Link
         href="/log/new"
-        className="fixed bottom-6 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-emerald-600 text-2xl text-white shadow-lg transition hover:bg-emerald-700"
+        className="fixed bottom-6 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg transition hover:bg-emerald-700"
         aria-label="Log food"
       >
-        +
+        <Plus size={26} strokeWidth={2.25} />
       </Link>
       <Link
         href="/log/photo"
-        className="fixed bottom-6 left-[calc(50%+4.5rem)] flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full bg-white text-xl text-neutral-700 shadow-lg ring-1 ring-neutral-200 transition hover:bg-neutral-50"
+        className="fixed bottom-6 left-[calc(50%+4.5rem)] flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full bg-white text-neutral-700 shadow-lg ring-1 ring-neutral-200 transition hover:bg-neutral-50"
         aria-label="Log food by photo"
       >
-        📷
+        <Camera size={20} strokeWidth={2} />
       </Link>
     </div>
   );
