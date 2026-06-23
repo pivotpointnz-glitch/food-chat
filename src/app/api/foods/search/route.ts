@@ -32,23 +32,84 @@ function extractNutrient(food: UsdaFood, nutrientNumber: string): number {
   return match?.value ?? match?.amount ?? 0;
 }
 
+// Words that indicate a "plain"/default preparation — these get ranked
+// above more specific preparations (boiled, canned, dehydrated, fried,
+// mashed, etc.) when the search query itself doesn't ask for them.
+const PLAIN_PREPARATION_WORDS = ["raw", "whole", "fresh"];
+
+// Words that indicate extra processing/preparation complexity. Each one
+// found in a name (beyond what the query itself mentions) pushes that
+// result further down the list, since a bare "carrots" search shouldn't
+// surface "carrots, dehydrated" above "carrots, raw".
+const PROCESSING_QUALIFIER_WORDS = [
+  "cooked",
+  "boiled",
+  "steamed",
+  "canned",
+  "dehydrated",
+  "dried",
+  "frozen",
+  "fried",
+  "roasted",
+  "baked",
+  "mashed",
+  "pickled",
+  "creamed",
+  "scalloped",
+  "candied",
+  "glazed",
+  "juice",
+  "puree",
+  "powder",
+  "flour",
+  "starch",
+  "chips",
+  "flakes",
+  "with",
+  "added",
+  "fortified",
+  "enriched",
+];
+
 /**
  * Scores how closely a food name matches the search query, lower is better.
  * USDA's own result ordering isn't reliably relevance-sorted, so we re-rank
- * ourselves: exact match first, then "starts with", then shortest name
- * containing the query (since "Potatoes, raw" beats "Potatoes, mashed,
- * home-prepared, whole milk and butter added" for a plain "potato" search).
+ * ourselves with three layers:
+ *   1. How closely the name matches the query text (exact > starts-with > contains)
+ *   2. Whether the query itself asked for a specific preparation (if so, that
+ *      preparation is preferred; otherwise plain/raw is preferred)
+ *   3. Fewer extra qualifiers/clauses beats more (shorter, simpler name wins)
  */
 function relevanceScore(name: string, query: string): number {
   const lowerName = name.toLowerCase();
   const lowerQuery = query.toLowerCase().trim();
 
-  if (lowerName === lowerQuery) return 0;
-  if (lowerName.startsWith(lowerQuery)) return 1 + lowerName.length / 1000;
-  if (lowerName.startsWith(`${lowerQuery},`)) return 1 + lowerName.length / 1000;
-  const wordBoundaryMatch = new RegExp(`\\b${lowerQuery}\\b`).test(lowerName);
-  if (wordBoundaryMatch) return 2 + lowerName.length / 1000;
-  return 3 + lowerName.length / 1000;
+  let textMatchScore: number;
+  if (lowerName === lowerQuery) textMatchScore = 0;
+  else if (lowerName.startsWith(lowerQuery) || lowerName.startsWith(`${lowerQuery},`)) textMatchScore = 1;
+  else if (new RegExp(`\\b${lowerQuery}\\b`).test(lowerName)) textMatchScore = 2;
+  else textMatchScore = 3;
+
+  // Did the query itself mention a specific preparation? If so, don't
+  // penalize the name for having it — the person asked for it.
+  const queryMentionsProcessing = PROCESSING_QUALIFIER_WORDS.some((w) => lowerQuery.includes(w));
+
+  let preparationPenalty = 0;
+  if (!queryMentionsProcessing) {
+    const processingWordCount = PROCESSING_QUALIFIER_WORDS.filter((w) =>
+      new RegExp(`\\b${w}\\b`).test(lowerName)
+    ).length;
+    preparationPenalty += processingWordCount * 2;
+
+    // Slight bonus (negative penalty) for explicitly plain/raw entries.
+    const isPlain = PLAIN_PREPARATION_WORDS.some((w) => new RegExp(`\\b${w}\\b`).test(lowerName));
+    if (isPlain) preparationPenalty -= 1;
+  }
+
+  // Fewer total comma-separated clauses = simpler, more generic entry.
+  const clauseCount = lowerName.split(",").length;
+
+  return textMatchScore * 100 + preparationPenalty * 10 + clauseCount + lowerName.length / 1000;
 }
 
 export async function GET(request: Request) {
@@ -88,7 +149,7 @@ export async function GET(request: Request) {
 
   const personal = personalFiltered
     .sort((a, b) => relevanceScore(a.name, query) - relevanceScore(b.name, query))
-    .slice(0, 8);
+    .slice(0, 5);
 
   // 2. Query USDA live for anything not already cached. We still show these
   // as separate "USDA" results; selecting one will cache it into `foods`.
@@ -122,13 +183,6 @@ export async function GET(request: Request) {
         const data = await usdaRes.json();
         const foods: UsdaFood[] = data.foods ?? [];
 
-        // TEMP DEBUG: log what USDA actually returns, to diagnose why
-        // branded items appear despite the Foundation/SR Legacy filter.
-        console.log(
-          "USDA raw results:",
-          foods.map((f) => ({ dataType: f.dataType, brandOwner: f.brandOwner, description: f.description }))
-        );
-
         usdaResults = foods
           .filter((f) => !f.brandOwner) // belt-and-suspenders: drop anything with a brand owner, regardless of dataType
           .map((f) => ({
@@ -141,7 +195,7 @@ export async function GET(request: Request) {
             fatPer100: extractNutrient(f, NUTRIENT_NUMBERS.fat),
           }))
           .sort((a, b) => relevanceScore(a.name, query) - relevanceScore(b.name, query))
-          .slice(0, 8);
+          .slice(0, 5);
       }
     } catch {
       // USDA being unreachable shouldn't break personal-library search.
