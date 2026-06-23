@@ -4,13 +4,8 @@ import { Mic, Camera, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { MacroProgress } from "@/components/MacroProgress";
 import { LogRow } from "@/components/LogRow";
+import { startOfTodayNZ_ISO, todayDisplayNZ } from "@/lib/nzTime";
 import type { LogEntryWithFood, Profile } from "@/lib/types";
-
-function startOfTodayISO() {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  return now.toISOString();
-}
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -30,7 +25,7 @@ export default async function HomePage() {
     .from("logs")
     .select("*, food:foods(id, name, brand)")
     .eq("user_id", user.id)
-    .gte("logged_at", startOfTodayISO())
+    .gte("logged_at", startOfTodayNZ_ISO())
     .order("logged_at", { ascending: false });
 
   const logs = (logsRaw ?? []) as unknown as LogEntryWithFood[];
@@ -50,9 +45,7 @@ export default async function HomePage() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-neutral-500">Today</p>
-          <h1 className="text-xl font-semibold text-neutral-900">
-            {new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
-          </h1>
+          <h1 className="text-xl font-semibold text-neutral-900">{todayDisplayNZ()}</h1>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/history" className="text-sm font-medium text-neutral-500">
