@@ -99,12 +99,20 @@ export default function MyFoodsPage() {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => setConfirmingId(food.id)}
-                  className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-500 hover:border-red-200 hover:text-red-600"
-                >
-                  Delete
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => router.push(`/foods/${food.id}/edit`)}
+                    className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-500 hover:border-emerald-200 hover:text-emerald-700"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setConfirmingId(food.id)}
+                    className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-500 hover:border-red-200 hover:text-red-600"
+                  >
+                    Delete
+                  </button>
+                </div>
               )}
             </div>
           ))}
