@@ -91,12 +91,15 @@ const PROCESSING_QUALIFIER_WORDS = [
 function relevanceScore(name: string, query: string): number {
   const lowerName = name.toLowerCase();
   const lowerQuery = query.toLowerCase().trim();
+  const firstClause = lowerName.split(",")[0].trim();
 
   let textMatchScore: number;
   if (lowerName === lowerQuery) textMatchScore = 0;
+  else if (firstClause === lowerQuery) textMatchScore = 0.5;
   else if (lowerName.startsWith(lowerQuery) || lowerName.startsWith(`${lowerQuery},`)) textMatchScore = 1;
-  else if (new RegExp(`\\b${lowerQuery}\\b`).test(lowerName)) textMatchScore = 2;
-  else textMatchScore = 3;
+  else if (new RegExp(`\\b${lowerQuery}\\b`).test(firstClause)) textMatchScore = 1.5;
+  else if (new RegExp(`\\b${lowerQuery}\\b`).test(lowerName)) textMatchScore = 4;
+  else textMatchScore = 5;
 
   // Did the query itself mention a specific preparation? If so, don't
   // penalize the name for having it — the person asked for it.
@@ -178,7 +181,7 @@ export async function GET(request: Request) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             query,
-            pageSize: 50,
+            pageSize: 200,
             dataType: ["Foundation", "SR Legacy"],
           }),
         }
