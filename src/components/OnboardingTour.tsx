@@ -27,7 +27,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     targetId: "tour-my-foods",
     title: "Save your own foods",
-    description: "Create custom foods and recipes — like your usual smoothie — so logging them is a single tap next time.",
+    description: "Add your own recipes, such as your favourite smoothie, for easy logging.",
   },
   {
     targetId: "tour-history",
