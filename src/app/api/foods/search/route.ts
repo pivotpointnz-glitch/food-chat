@@ -278,19 +278,21 @@ export async function GET(request: Request) {
         }
       }
 
-      // TEMP DEBUG: if fiber extraction comes back 0 for the first result,
-      // log its raw foodNutrients so we can see USDA's actual response
-      // shape and confirm whether the extraction fix worked.
+      // TEMP DEBUG: log fiber-extraction results across all candidates, so
+      // we can see exactly which foods (if any) are missing fiber data and
+      // why — checking only the first result previously missed cases
+      // where the selected food wasn't first in the list.
+      const fiberDebug = allFoods.slice(0, 10).map((f) => ({
+        name: f.description,
+        fiberExtracted: extractNutrient(f, NUTRIENT_NUMBERS.fiber),
+        nutrientCount: f.foodNutrients?.length ?? 0,
+      }));
+      console.log("Fiber debug for query:", query, JSON.stringify(fiberDebug));
       if (allFoods.length > 0) {
-        const fiberCheck = extractNutrient(allFoods[0], NUTRIENT_NUMBERS.fiber);
-        if (fiberCheck === 0) {
-          console.log(
-            "Fiber extraction returned 0 for:",
-            allFoods[0].description,
-            "raw foodNutrients sample:",
-            JSON.stringify(allFoods[0].foodNutrients?.slice(0, 25))
-          );
-        }
+        console.log(
+          "First result raw foodNutrients sample:",
+          JSON.stringify(allFoods[0].foodNutrients?.slice(0, 25))
+        );
       }
 
       usdaResults = allFoods
