@@ -30,6 +30,16 @@ function defaultMealForNow(): MealType {
   return "snack";
 }
 
+function todayDateInputValue(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function nowTimeInputValue(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export default function NewLogPage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -41,6 +51,8 @@ export default function NewLogPage() {
   const [unit, setUnit] = useState("g");
   const [gramsPerEach, setGramsPerEach] = useState<number | null>(null);
   const [mealType, setMealType] = useState<MealType>(defaultMealForNow());
+  const [logDate, setLogDate] = useState(todayDateInputValue());
+  const [logTime, setLogTime] = useState(nowTimeInputValue());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -112,6 +124,7 @@ export default function NewLogPage() {
     setError(null);
 
     const gramsEquivalent = toGramsEquivalent(quantity, unit, gramsPerEach);
+    const loggedAt = new Date(`${logDate}T${logTime}:00`).toISOString();
 
     const res = await fetch("/api/logs", {
       method: "POST",
@@ -123,6 +136,7 @@ export default function NewLogPage() {
         gramsEquivalent,
         mealType,
         source: "manual",
+        loggedAt,
       }),
     });
 
@@ -218,6 +232,27 @@ export default function NewLogPage() {
                 {opt.label}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-neutral-700">
+            Logged for <span className="text-neutral-400">(forgot something earlier? change this)</span>
+          </label>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="date"
+              value={logDate}
+              max={todayDateInputValue()}
+              onChange={(e) => setLogDate(e.target.value)}
+              className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <input
+              type="time"
+              value={logTime}
+              onChange={(e) => setLogTime(e.target.value)}
+              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
           </div>
         </div>
 

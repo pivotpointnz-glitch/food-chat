@@ -41,6 +41,16 @@ function defaultMealForNow(): MealType {
   return "snack";
 }
 
+function todayDateInputValue(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function nowTimeInputValue(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 const mealOptions: { value: MealType; label: string }[] = [
   { value: "breakfast", label: "Breakfast" },
   { value: "lunch", label: "Lunch" },
@@ -78,6 +88,12 @@ export function ConfirmItemsList({
     }))
   );
   const [savingAll, setSavingAll] = useState(false);
+
+  // Shared date/time for the whole batch — these items all describe one
+  // sitting/meal, so one date/time picker covers all of them. Defaults to
+  // now, but editable for logging something forgotten earlier.
+  const [logDate, setLogDate] = useState(todayDateInputValue());
+  const [logTime, setLogTime] = useState(nowTimeInputValue());
 
   // Per-item guard against stale out-of-order network responses: if
   // someone types quickly, an earlier (shorter) query's response could
@@ -156,6 +172,8 @@ export function ConfirmItemsList({
     const item = items[index];
     if (!item.selectedFood) return;
 
+    const loggedAt = new Date(`${logDate}T${logTime}:00`).toISOString();
+
     const res = await fetch("/api/logs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -166,6 +184,7 @@ export function ConfirmItemsList({
         gramsEquivalent: item.loggedQuantity,
         mealType: item.mealType,
         source,
+        loggedAt,
       }),
     });
 
@@ -193,6 +212,27 @@ export function ConfirmItemsList({
 
   return (
     <>
+      <div className="mt-4">
+        <label className="block text-sm font-medium text-neutral-700">
+          Logged for <span className="text-neutral-400">(forgot something earlier? change this)</span>
+        </label>
+        <div className="mt-1 flex items-center gap-2">
+          <input
+            type="date"
+            value={logDate}
+            max={todayDateInputValue()}
+            onChange={(e) => setLogDate(e.target.value)}
+            className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
+          <input
+            type="time"
+            value={logTime}
+            onChange={(e) => setLogTime(e.target.value)}
+            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
+        </div>
+      </div>
+
       <div className="mt-4 space-y-4">
         {items.map((item, i) => (
           <div
