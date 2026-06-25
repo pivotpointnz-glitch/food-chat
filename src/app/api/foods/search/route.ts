@@ -278,23 +278,6 @@ export async function GET(request: Request) {
         }
       }
 
-      // TEMP DEBUG: log fiber-extraction results across all candidates, so
-      // we can see exactly which foods (if any) are missing fiber data and
-      // why — checking only the first result previously missed cases
-      // where the selected food wasn't first in the list.
-      const fiberDebug = allFoods.slice(0, 10).map((f) => ({
-        name: f.description,
-        fiberExtracted: extractNutrient(f, NUTRIENT_NUMBERS.fiber),
-        nutrientCount: f.foodNutrients?.length ?? 0,
-      }));
-      console.log("Fiber debug for query:", query, JSON.stringify(fiberDebug));
-      if (allFoods.length > 0) {
-        console.log(
-          "First result raw foodNutrients sample:",
-          JSON.stringify(allFoods[0].foodNutrients?.slice(0, 25))
-        );
-      }
-
       usdaResults = allFoods
         .filter((f) => !f.brandOwner) // belt-and-suspenders: drop anything with a brand owner, regardless of dataType
         .map((f) => ({
@@ -306,9 +289,22 @@ export async function GET(request: Request) {
           carbsPer100: extractNutrient(f, NUTRIENT_NUMBERS.carbs),
           fatPer100: extractNutrient(f, NUTRIENT_NUMBERS.fat),
           fiberPer100: extractNutrient(f, NUTRIENT_NUMBERS.fiber),
+          _nutrientCount: f.foodNutrients?.length ?? 0,
         }))
-        .sort((a, b) => relevanceScore(a.name, query) - relevanceScore(b.name, query))
-        .slice(0, 5);
+        .sort((a, b) => {
+          const relevanceDiff = relevanceScore(a.name, query) - relevanceScore(b.name, query);
+          // When two results are close in relevance, prefer the one with a
+          // more complete nutrient profile — some older USDA entries have
+          // sparse data (missing fiber and other nutrients) even though
+          // their name matches just as well, and a more complete record is
+          // generally the better choice to surface first.
+          if (Math.abs(relevanceDiff) < 50) {
+            return b._nutrientCount - a._nutrientCount;
+          }
+          return relevanceDiff;
+        })
+        .slice(0, 5)
+        .map(({ _nutrientCount, ...rest }) => rest);
     } catch {
       // USDA being unreachable shouldn't break personal-library search.
     }
