@@ -24,6 +24,7 @@ interface DayTotal {
   protein: number;
   carbs: number;
   fat: number;
+  fiber: number;
 }
 
 function toDateString(d: Date): string {
@@ -42,7 +43,7 @@ export default function HistoryPage() {
   // Day view state
   const [selectedDate, setSelectedDate] = useState(toDateString(new Date()));
   const [dayLogs, setDayLogs] = useState<LogEntryWithFood[]>([]);
-  const [dayTotals, setDayTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [dayTotals, setDayTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 });
   const [dayLoading, setDayLoading] = useState(false);
 
   // Week/month view state
@@ -55,7 +56,7 @@ export default function HistoryPage() {
     const res = await fetch(`/api/history/day?date=${date}`);
     const data = await res.json();
     setDayLogs(data.logs ?? []);
-    setDayTotals(data.totals ?? { calories: 0, protein: 0, carbs: 0, fat: 0 });
+    setDayTotals(data.totals ?? { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 });
     setDayLoading(false);
   }, []);
 
@@ -74,7 +75,7 @@ export default function HistoryPage() {
     const cursor = new Date(start);
     while (cursor <= end) {
       const key = toDateString(cursor);
-      filled.push(byDate.get(key) ?? { date: key, calories: 0, protein: 0, carbs: 0, fat: 0 });
+      filled.push(byDate.get(key) ?? { date: key, calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 });
       cursor.setDate(cursor.getDate() + 1);
     }
 
@@ -93,6 +94,7 @@ export default function HistoryPage() {
         protein: rangeDays.reduce((s, d) => s + d.protein, 0) / rangeDays.length,
         carbs: rangeDays.reduce((s, d) => s + d.carbs, 0) / rangeDays.length,
         fat: rangeDays.reduce((s, d) => s + d.fat, 0) / rangeDays.length,
+        fiber: rangeDays.reduce((s, d) => s + d.fiber, 0) / rangeDays.length,
       }
     : null;
 
@@ -171,7 +173,7 @@ export default function HistoryPage() {
             <p className="mt-6 text-center text-sm text-neutral-400">Loading…</p>
           ) : (
             <>
-              <div className="mt-4 grid grid-cols-4 gap-2 rounded-xl bg-neutral-50 p-3 text-center">
+              <div className="mt-4 grid grid-cols-5 gap-2 rounded-xl bg-neutral-50 p-3 text-center">
                 <div>
                   <p className="text-base font-semibold text-neutral-900">
                     {Math.round(dayTotals.calories)}
@@ -196,6 +198,12 @@ export default function HistoryPage() {
                   </p>
                   <p className="text-xs text-neutral-500">fat</p>
                 </div>
+                <div>
+                  <p className="text-base font-semibold text-neutral-900">
+                    {Math.round(dayTotals.fiber)}
+                  </p>
+                  <p className="text-xs text-neutral-500">fiber</p>
+                </div>
               </div>
 
               <div className="mt-4 rounded-2xl border border-neutral-100 bg-white px-4 shadow-sm">
@@ -219,7 +227,7 @@ export default function HistoryPage() {
           ) : (
             <>
               {rangeAvg && (
-                <div className="grid grid-cols-4 gap-2 rounded-xl bg-neutral-50 p-3 text-center">
+                <div className="grid grid-cols-5 gap-2 rounded-xl bg-neutral-50 p-3 text-center">
                   <div>
                     <p className="text-base font-semibold text-neutral-900">
                       {Math.round(rangeAvg.calories)}
@@ -243,6 +251,12 @@ export default function HistoryPage() {
                       {Math.round(rangeAvg.fat)}
                     </p>
                     <p className="text-xs text-neutral-500">avg fat</p>
+                  </div>
+                  <div>
+                    <p className="text-base font-semibold text-neutral-900">
+                      {Math.round(rangeAvg.fiber)}
+                    </p>
+                    <p className="text-xs text-neutral-500">avg fiber</p>
                   </div>
                 </div>
               )}
@@ -302,11 +316,19 @@ export default function HistoryPage() {
                       strokeWidth={2}
                       dot={false}
                     />
+                    <Line
+                      yAxisId="grams"
+                      type="monotone"
+                      dataKey="fiber"
+                      stroke="#84cc16"
+                      strokeWidth={2}
+                      dot={false}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
               <p className="mt-1 text-center text-[11px] text-neutral-400">
-                Left axis: calories (kcal) · Right axis: protein/carbs/fat (g)
+                Left axis: calories (kcal) · Right axis: protein/carbs/fat/fiber (g)
               </p>
 
               <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm">
@@ -318,6 +340,7 @@ export default function HistoryPage() {
                       <th className="px-3 py-2 text-right font-medium">P</th>
                       <th className="px-3 py-2 text-right font-medium">C</th>
                       <th className="px-3 py-2 text-right font-medium">F</th>
+                      <th className="px-3 py-2 text-right font-medium">Fb</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -338,6 +361,9 @@ export default function HistoryPage() {
                           </td>
                           <td className="px-3 py-2 text-right text-neutral-500">
                             {Math.round(d.fat)}
+                          </td>
+                          <td className="px-3 py-2 text-right text-neutral-500">
+                            {Math.round(d.fiber)}
                           </td>
                         </tr>
                       ))}

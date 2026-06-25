@@ -13,6 +13,7 @@ interface UsdaResult {
   proteinPer100: number;
   carbsPer100: number;
   fatPer100: number;
+  fiberPer100: number;
 }
 
 const mealOptions: { value: MealType; label: string }[] = [
@@ -161,6 +162,7 @@ export default function NewLogPage() {
       protein: selectedFood.protein_g_per_100 * factor,
       carbs: selectedFood.carbs_g_per_100 * factor,
       fat: selectedFood.fat_g_per_100 * factor,
+      fiber: selectedFood.fiber_g_per_100 * factor,
     };
 
     return (
@@ -256,7 +258,7 @@ export default function NewLogPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-4 gap-2 rounded-xl bg-neutral-50 p-4 text-center">
+        <div className="mt-6 grid grid-cols-5 gap-2 rounded-xl bg-neutral-50 p-4 text-center">
           <div>
             <p className="text-lg font-semibold text-neutral-900">{Math.round(preview.calories)}</p>
             <p className="text-xs text-neutral-500">kcal</p>
@@ -272,6 +274,10 @@ export default function NewLogPage() {
           <div>
             <p className="text-lg font-semibold text-neutral-900">{Math.round(preview.fat)}</p>
             <p className="text-xs text-neutral-500">fat</p>
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-neutral-900">{Math.round(preview.fiber)}</p>
+            <p className="text-xs text-neutral-500">fiber</p>
           </div>
         </div>
 

@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
   const { data: logs, error } = await supabase
     .from("logs")
-    .select("logged_at, calories, protein_g, carbs_g, fat_g")
+    .select("logged_at, calories, protein_g, carbs_g, fat_g, fiber_g")
     .eq("user_id", user.id)
     .gte("logged_at", rangeStart.toISOString())
     .lt("logged_at", rangeEnd.toISOString())
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
   // Group into per-day totals, keyed by local YYYY-MM-DD.
   const dayTotals = new Map<
     string,
-    { calories: number; protein: number; carbs: number; fat: number }
+    { calories: number; protein: number; carbs: number; fat: number; fiber: number }
   >();
 
   for (const log of logs ?? []) {
@@ -48,11 +48,12 @@ export async function GET(request: Request) {
       date.getDate()
     ).padStart(2, "0")}`;
 
-    const existing = dayTotals.get(key) ?? { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    const existing = dayTotals.get(key) ?? { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 };
     existing.calories += log.calories;
     existing.protein += log.protein_g;
     existing.carbs += log.carbs_g;
     existing.fat += log.fat_g;
+    existing.fiber += log.fiber_g;
     dayTotals.set(key, existing);
   }
 

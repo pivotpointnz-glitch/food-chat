@@ -9,6 +9,7 @@ interface CacheUsdaBody {
   proteinPer100: number;
   carbsPer100: number;
   fatPer100: number;
+  fiberPer100?: number;
 }
 
 export async function POST(request: Request) {
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
       protein_g_per_100: body.proteinPer100,
       carbs_g_per_100: body.carbsPer100,
       fat_g_per_100: body.fatPer100,
+      fiber_g_per_100: body.fiberPer100 ?? 0,
     })
     .select("*")
     .single();

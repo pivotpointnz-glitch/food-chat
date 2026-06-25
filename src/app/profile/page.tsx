@@ -18,6 +18,7 @@ export default function ProfilePage() {
   const [targetProtein, setTargetProtein] = useState<string>("");
   const [targetCarbs, setTargetCarbs] = useState<string>("");
   const [targetFat, setTargetFat] = useState<string>("");
+  const [targetFiber, setTargetFiber] = useState<string>("");
 
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetting, setResetting] = useState(false);
@@ -40,6 +41,7 @@ export default function ProfilePage() {
         setTargetProtein(data.target_protein_g?.toString() ?? "");
         setTargetCarbs(data.target_carbs_g?.toString() ?? "");
         setTargetFat(data.target_fat_g?.toString() ?? "");
+        setTargetFiber(data.target_fiber_g?.toString() ?? "");
       }
       setLoading(false);
     }
@@ -60,6 +62,7 @@ export default function ProfilePage() {
         targetProteinG: targetProtein === "" ? null : Number(targetProtein),
         targetCarbsG: targetCarbs === "" ? null : Number(targetCarbs),
         targetFatG: targetFat === "" ? null : Number(targetFat),
+        targetFiberG: targetFiber === "" ? null : Number(targetFiber),
       }),
     });
 
@@ -181,6 +184,16 @@ export default function ProfilePage() {
               value={targetFat}
               onChange={(e) => setTargetFat(e.target.value)}
               placeholder="e.g. 70"
+              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700">Fiber (g)</label>
+            <input
+              type="number"
+              value={targetFiber}
+              onChange={(e) => setTargetFiber(e.target.value)}
+              placeholder="e.g. 30"
               className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>

@@ -13,6 +13,7 @@ interface UsdaResult {
   proteinPer100: number;
   carbsPer100: number;
   fatPer100: number;
+  fiberPer100: number;
 }
 
 interface ComponentRow {
@@ -33,6 +34,7 @@ export interface FoodFormInitialData {
   protein: number;
   carbs: number;
   fat: number;
+  fiber: number;
   components: ComponentRow[];
 }
 
@@ -47,6 +49,7 @@ export interface FoodFormPayload {
   proteinPer100?: number;
   carbsPer100?: number;
   fatPer100?: number;
+  fiberPer100?: number;
   components?: { foodId: string; quantity: number; unit: string; gramsEquivalent: number }[];
 }
 
@@ -74,6 +77,7 @@ export function FoodForm({ title, initialData, onSave, onSaved, saveLabel = "Sav
   const [protein, setProtein] = useState(initialData?.protein ?? 0);
   const [carbs, setCarbs] = useState(initialData?.carbs ?? 0);
   const [fat, setFat] = useState(initialData?.fat ?? 0);
+  const [fiber, setFiber] = useState(initialData?.fiber ?? 0);
 
   const [components, setComponents] = useState<ComponentRow[]>(initialData?.components ?? []);
   const [componentQuery, setComponentQuery] = useState("");
@@ -181,10 +185,11 @@ export function FoodForm({ title, initialData, onSave, onSaved, saveLabel = "Sav
         protein: acc.protein + c.food.protein_g_per_100 * factor,
         carbs: acc.carbs + c.food.carbs_g_per_100 * factor,
         fat: acc.fat + c.food.fat_g_per_100 * factor,
+        fiber: acc.fiber + c.food.fiber_g_per_100 * factor,
         grams: acc.grams + c.gramsEquivalent,
       };
     },
-    { calories: 0, protein: 0, carbs: 0, fat: 0, grams: 0 }
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, grams: 0 }
   );
 
   async function handleSave() {
@@ -213,6 +218,7 @@ export function FoodForm({ title, initialData, onSave, onSaved, saveLabel = "Sav
             proteinPer100: protein,
             carbsPer100: carbs,
             fatPer100: fat,
+            fiberPer100: fiber,
           }
         : {
             name,
@@ -382,6 +388,15 @@ export function FoodForm({ title, initialData, onSave, onSaved, saveLabel = "Sav
                 className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700">Fiber (g)</label>
+              <input
+                type="number"
+                value={fiber}
+                onChange={(e) => setFiber(Number(e.target.value))}
+                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
           </div>
         </div>
       ) : (
@@ -484,12 +499,12 @@ export function FoodForm({ title, initialData, onSave, onSaved, saveLabel = "Sav
                 </div>
               ))}
 
-              <div className="mt-3 grid grid-cols-4 gap-2 rounded-xl bg-neutral-50 p-3 text-center">
+              <div className="mt-3 grid grid-cols-5 gap-2 rounded-xl bg-neutral-50 p-3 text-center">
                 <div>
                   <p className="text-base font-semibold text-neutral-900">
                     {Math.round(compositeTotals.calories)}
                   </p>
-                  <p className="text-xs text-neutral-500">kcal total</p>
+                  <p className="text-xs text-neutral-500">kcal</p>
                 </div>
                 <div>
                   <p className="text-base font-semibold text-neutral-900">
@@ -508,6 +523,12 @@ export function FoodForm({ title, initialData, onSave, onSaved, saveLabel = "Sav
                     {Math.round(compositeTotals.fat)}
                   </p>
                   <p className="text-xs text-neutral-500">fat</p>
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-neutral-900">
+                    {Math.round(compositeTotals.fiber)}
+                  </p>
+                  <p className="text-xs text-neutral-500">fiber</p>
                 </div>
               </div>
               <p className="text-center text-xs text-neutral-400">

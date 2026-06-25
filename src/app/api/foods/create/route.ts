@@ -22,6 +22,7 @@ interface CreateFoodBody {
   proteinPer100?: number;
   carbsPer100?: number;
   fatPer100?: number;
+  fiberPer100?: number;
   // For composite foods: list of components to sum macros from.
   components?: ComponentInput[];
 }
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
   let proteinPer100 = body.proteinPer100 ?? 0;
   let carbsPer100 = body.carbsPer100 ?? 0;
   let fatPer100 = body.fatPer100 ?? 0;
+  let fiberPer100 = body.fiberPer100 ?? 0;
   let totalGrams = body.defaultQuantity;
 
   // For composite foods, fetch each component's macros and sum them,
@@ -60,7 +62,7 @@ export async function POST(request: Request) {
     const componentIds = components.map((c) => c.foodId);
     const { data: componentFoods, error: componentError } = await supabase
       .from("foods")
-      .select("id, calories_per_100, protein_g_per_100, carbs_g_per_100, fat_g_per_100")
+      .select("id, calories_per_100, protein_g_per_100, carbs_g_per_100, fat_g_per_100, fiber_g_per_100")
       .in("id", componentIds);
 
     if (componentError || !componentFoods) {
@@ -73,6 +75,7 @@ export async function POST(request: Request) {
     let totalProtein = 0;
     let totalCarbs = 0;
     let totalFat = 0;
+    let totalFiber = 0;
     let sumGrams = 0;
 
     for (const comp of components) {
@@ -83,6 +86,7 @@ export async function POST(request: Request) {
       totalProtein += food.protein_g_per_100 * factor;
       totalCarbs += food.carbs_g_per_100 * factor;
       totalFat += food.fat_g_per_100 * factor;
+      totalFiber += food.fiber_g_per_100 * factor;
       sumGrams += comp.gramsEquivalent;
     }
 
@@ -94,6 +98,7 @@ export async function POST(request: Request) {
     proteinPer100 = totalProtein * normalizingFactor;
     carbsPer100 = totalCarbs * normalizingFactor;
     fatPer100 = totalFat * normalizingFactor;
+    fiberPer100 = totalFiber * normalizingFactor;
   }
 
   const { data: food, error: foodError } = await supabase
@@ -113,6 +118,7 @@ export async function POST(request: Request) {
       protein_g_per_100: proteinPer100,
       carbs_g_per_100: carbsPer100,
       fat_g_per_100: fatPer100,
+      fiber_g_per_100: fiberPer100,
     })
     .select("*")
     .single();

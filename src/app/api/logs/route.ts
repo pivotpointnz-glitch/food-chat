@@ -7,7 +7,7 @@ interface CreateLogBody {
   unit: string;
   gramsEquivalent: number;
   mealType: "breakfast" | "lunch" | "dinner" | "snack";
-  source: "manual" | "voice";
+  source: "manual" | "voice" | "photo";
   loggedAt?: string;
 }
 
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   const { data: food, error: foodError } = await supabase
     .from("foods")
-    .select("calories_per_100, protein_g_per_100, carbs_g_per_100, fat_g_per_100")
+    .select("calories_per_100, protein_g_per_100, carbs_g_per_100, fat_g_per_100, fiber_g_per_100")
     .eq("id", body.foodId)
     .single();
 
@@ -45,6 +45,7 @@ export async function POST(request: Request) {
       protein_g: food.protein_g_per_100 * factor,
       carbs_g: food.carbs_g_per_100 * factor,
       fat_g: food.fat_g_per_100 * factor,
+      fiber_g: food.fiber_g_per_100 * factor,
       meal_type: body.mealType,
       source: body.source,
       logged_at: body.loggedAt ?? new Date().toISOString(),

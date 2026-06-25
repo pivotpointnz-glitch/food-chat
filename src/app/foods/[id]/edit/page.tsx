@@ -42,6 +42,7 @@ export default function EditFoodPage() {
         protein: food.protein_g_per_100,
         carbs: food.carbs_g_per_100,
         fat: food.fat_g_per_100,
+        fiber: food.fiber_g_per_100,
         components: componentRows.map((c) => ({
           food: c.food,
           quantity: c.quantity,

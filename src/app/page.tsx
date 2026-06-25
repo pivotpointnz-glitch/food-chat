@@ -43,8 +43,9 @@ export default async function HomePage() {
       protein: acc.protein + log.protein_g,
       carbs: acc.carbs + log.carbs_g,
       fat: acc.fat + log.fat_g,
+      fiber: acc.fiber + log.fiber_g,
     }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
   );
 
   return (
@@ -98,6 +99,13 @@ export default async function HomePage() {
           target={profile?.target_fat_g ?? null}
           unit="g"
           colorClass="bg-rose-400"
+        />
+        <MacroProgress
+          label="Fiber"
+          current={totals.fiber}
+          target={profile?.target_fiber_g ?? null}
+          unit="g"
+          colorClass="bg-lime-500"
         />
       </div>
 

@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   // Daily totals, same grouping logic as /api/history.
   const dayTotals = new Map<
     string,
-    { calories: number; protein: number; carbs: number; fat: number }
+    { calories: number; protein: number; carbs: number; fat: number; fiber: number }
   >();
 
   for (const log of logs) {
@@ -46,11 +46,12 @@ export async function GET(request: Request) {
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
       date.getDate()
     ).padStart(2, "0")}`;
-    const existing = dayTotals.get(key) ?? { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    const existing = dayTotals.get(key) ?? { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 };
     existing.calories += log.calories;
     existing.protein += log.protein_g;
     existing.carbs += log.carbs_g;
     existing.fat += log.fat_g;
+    existing.fiber += log.fiber_g;
     dayTotals.set(key, existing);
   }
 

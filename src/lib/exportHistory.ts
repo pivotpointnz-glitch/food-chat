@@ -9,6 +9,7 @@ interface DayTotal {
   protein: number;
   carbs: number;
   fat: number;
+  fiber: number;
 }
 
 const mealLabels: Record<string, string> = {
@@ -32,9 +33,17 @@ export function exportHistoryToSpreadsheet(
     "Protein (g)": Math.round(d.protein),
     "Carbs (g)": Math.round(d.carbs),
     "Fat (g)": Math.round(d.fat),
+    "Fiber (g)": Math.round(d.fiber),
   }));
   const totalsSheet = XLSX.utils.json_to_sheet(totalsRows);
-  totalsSheet["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 10 }];
+  totalsSheet["!cols"] = [
+    { wch: 12 },
+    { wch: 16 },
+    { wch: 14 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 10 },
+  ];
   XLSX.utils.book_append_sheet(wb, totalsSheet, "Daily Totals");
 
   // Sheet 2: full per-entry detail
@@ -51,6 +60,7 @@ export function exportHistoryToSpreadsheet(
       "Protein (g)": Math.round(log.protein_g),
       "Carbs (g)": Math.round(log.carbs_g),
       "Fat (g)": Math.round(log.fat_g),
+      "Fiber (g)": Math.round(log.fiber_g),
       "Logged via": log.source,
     };
   });
@@ -65,6 +75,7 @@ export function exportHistoryToSpreadsheet(
     { wch: 14 },
     { wch: 12 },
     { wch: 10 },
+    { wch: 9 },
     { wch: 9 },
     { wch: 11 },
   ];

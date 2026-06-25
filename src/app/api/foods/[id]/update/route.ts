@@ -21,6 +21,7 @@ interface UpdateFoodBody {
   proteinPer100?: number;
   carbsPer100?: number;
   fatPer100?: number;
+  fiberPer100?: number;
   components?: ComponentInput[];
 }
 
@@ -54,6 +55,7 @@ export async function GET(
       protein_g_per_100: number;
       carbs_g_per_100: number;
       fat_g_per_100: number;
+      fiber_g_per_100: number;
       default_unit: string;
       default_quantity: number;
       base_unit: string;
@@ -67,7 +69,7 @@ export async function GET(
     const { data: items } = await supabase
       .from("composite_food_items")
       .select(
-        "quantity, unit, grams_equivalent, food:foods!component_food_id(id, name, calories_per_100, protein_g_per_100, carbs_g_per_100, fat_g_per_100, default_unit, default_quantity, base_unit)"
+        "quantity, unit, grams_equivalent, food:foods!component_food_id(id, name, calories_per_100, protein_g_per_100, carbs_g_per_100, fat_g_per_100, fiber_g_per_100, default_unit, default_quantity, base_unit)"
       )
       .eq("composite_food_id", id)
       .order("sort_order", { ascending: true });
@@ -120,6 +122,7 @@ export async function PATCH(
   let proteinPer100 = body.proteinPer100 ?? 0;
   let carbsPer100 = body.carbsPer100 ?? 0;
   let fatPer100 = body.fatPer100 ?? 0;
+  let fiberPer100 = body.fiberPer100 ?? 0;
   let totalGrams = body.defaultQuantity;
 
   if (body.isComposite) {
@@ -134,7 +137,7 @@ export async function PATCH(
     const componentIds = components.map((c) => c.foodId);
     const { data: componentFoods, error: componentError } = await supabase
       .from("foods")
-      .select("id, calories_per_100, protein_g_per_100, carbs_g_per_100, fat_g_per_100")
+      .select("id, calories_per_100, protein_g_per_100, carbs_g_per_100, fat_g_per_100, fiber_g_per_100")
       .in("id", componentIds);
 
     if (componentError || !componentFoods) {
@@ -147,6 +150,7 @@ export async function PATCH(
     let totalProtein = 0;
     let totalCarbs = 0;
     let totalFat = 0;
+    let totalFiber = 0;
     let sumGrams = 0;
 
     for (const comp of components) {
@@ -157,6 +161,7 @@ export async function PATCH(
       totalProtein += food.protein_g_per_100 * factor;
       totalCarbs += food.carbs_g_per_100 * factor;
       totalFat += food.fat_g_per_100 * factor;
+      totalFiber += food.fiber_g_per_100 * factor;
       sumGrams += comp.gramsEquivalent;
     }
 
@@ -166,6 +171,7 @@ export async function PATCH(
     proteinPer100 = totalProtein * normalizingFactor;
     carbsPer100 = totalCarbs * normalizingFactor;
     fatPer100 = totalFat * normalizingFactor;
+    fiberPer100 = totalFiber * normalizingFactor;
   }
 
   const { error: updateError } = await supabase
@@ -182,6 +188,7 @@ export async function PATCH(
       protein_g_per_100: proteinPer100,
       carbs_g_per_100: carbsPer100,
       fat_g_per_100: fatPer100,
+      fiber_g_per_100: fiberPer100,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);

@@ -40,8 +40,9 @@ export async function GET(request: Request) {
       protein: acc.protein + log.protein_g,
       carbs: acc.carbs + log.carbs_g,
       fat: acc.fat + log.fat_g,
+      fiber: acc.fiber + log.fiber_g,
     }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
   );
 
   return NextResponse.json({ logs, totals });

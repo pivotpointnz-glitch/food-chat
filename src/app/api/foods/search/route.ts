@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 // USDA nutrient numbers we care about.
-// 208 = Energy (kcal), 203 = Protein, 204 = Total fat, 205 = Carbohydrate, by difference
+// 208 = Energy (kcal), 203 = Protein, 204 = Total fat, 205 = Carbohydrate by difference, 291 = Fiber, total dietary
 const NUTRIENT_NUMBERS = {
   calories: "208",
   protein: "203",
   fat: "204",
   carbs: "205",
+  fiber: "291",
 } as const;
 
 interface UsdaFoodNutrient {
@@ -205,6 +206,7 @@ export async function GET(request: Request) {
     proteinPer100: number;
     carbsPer100: number;
     fatPer100: number;
+    fiberPer100: number;
   }> = [];
 
   if (apiKey) {
@@ -244,6 +246,7 @@ export async function GET(request: Request) {
           proteinPer100: extractNutrient(f, NUTRIENT_NUMBERS.protein),
           carbsPer100: extractNutrient(f, NUTRIENT_NUMBERS.carbs),
           fatPer100: extractNutrient(f, NUTRIENT_NUMBERS.fat),
+          fiberPer100: extractNutrient(f, NUTRIENT_NUMBERS.fiber),
         }))
         .sort((a, b) => relevanceScore(a.name, query) - relevanceScore(b.name, query))
         .slice(0, 5);

@@ -30,7 +30,8 @@ export function LogRow({ log }: { log: LogEntryWithFood }) {
       <div className="text-right text-sm text-neutral-700">
         <p className="font-medium">{Math.round(log.calories)} kcal</p>
         <p className="text-xs text-neutral-500">
-          P{Math.round(log.protein_g)} C{Math.round(log.carbs_g)} F{Math.round(log.fat_g)}
+          P{Math.round(log.protein_g)} C{Math.round(log.carbs_g)} F{Math.round(log.fat_g)} Fb
+          {Math.round(log.fiber_g)}
         </p>
       </div>
     </div>

@@ -15,6 +15,7 @@ export interface Profile {
   target_protein_g: number | null;
   target_carbs_g: number | null;
   target_fat_g: number | null;
+  target_fiber_g: number | null;
   has_seen_tour: boolean;
   created_at: string;
 }
@@ -36,6 +37,7 @@ export interface Food {
   protein_g_per_100: number;
   carbs_g_per_100: number;
   fat_g_per_100: number;
+  fiber_g_per_100: number;
   created_at: string;
   updated_at: string;
 }
@@ -61,6 +63,7 @@ export interface LogEntry {
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+  fiber_g: number;
   meal_type: MealType;
   source: LogSource;
   logged_at: string;

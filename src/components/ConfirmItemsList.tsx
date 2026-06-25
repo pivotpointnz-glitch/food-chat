@@ -11,6 +11,7 @@ interface UsdaResult {
   proteinPer100: number;
   carbsPer100: number;
   fatPer100: number;
+  fiberPer100: number;
 }
 
 export interface RawParsedItem {
