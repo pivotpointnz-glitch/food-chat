@@ -12,10 +12,17 @@ const NUTRIENT_NUMBERS = {
 } as const;
 
 interface UsdaFoodNutrient {
-  nutrientNumber?: string;
-  number?: string;
+  nutrientNumber?: string | number;
+  number?: string | number;
+  nutrientId?: string | number;
   value?: number;
   amount?: number;
+  nutrient?: {
+    number?: string | number;
+    id?: string | number;
+    name?: string;
+  };
+  nutrientName?: string;
 }
 
 interface UsdaFood {
@@ -26,11 +33,46 @@ interface UsdaFood {
   foodNutrients: UsdaFoodNutrient[];
 }
 
+// USDA's nutrient name as a fallback match, since the numeric "nutrient
+// number" field has shown up in different shapes (flat vs nested under
+// `nutrient.number`) across endpoints/data types, and isn't always present
+// or consistently typed (string vs number). Matching by name as a backup
+// makes extraction robust regardless of which shape a given result uses.
+const NUTRIENT_NAME_FALLBACKS: Record<string, string[]> = {
+  "208": ["energy"],
+  "203": ["protein"],
+  "204": ["total lipid (fat)", "total fat"],
+  "205": ["carbohydrate, by difference", "carbohydrate"],
+  "291": ["fiber, total dietary", "dietary fiber", "fiber"],
+};
+
 function extractNutrient(food: UsdaFood, nutrientNumber: string): number {
-  const match = food.foodNutrients.find(
-    (n) => (n.nutrientNumber ?? n.number) === nutrientNumber
-  );
-  return match?.value ?? match?.amount ?? 0;
+  const match = food.foodNutrients.find((n) => {
+    const flatNumber = n.nutrientNumber ?? n.number ?? n.nutrientId;
+    const nestedNumber = n.nutrient?.number ?? n.nutrient?.id;
+    if (flatNumber !== undefined && String(flatNumber) === nutrientNumber) return true;
+    if (nestedNumber !== undefined && String(nestedNumber) === nutrientNumber) return true;
+    return false;
+  });
+
+  if (match) {
+    return match.value ?? match.amount ?? 0;
+  }
+
+  // Fallback: match by nutrient name (case-insensitive), in case the
+  // numeric identifier wasn't present or didn't match for this result.
+  const nameOptions = NUTRIENT_NAME_FALLBACKS[nutrientNumber];
+  if (nameOptions) {
+    const nameMatch = food.foodNutrients.find((n) => {
+      const name = (n.nutrientName ?? n.nutrient?.name ?? "").toLowerCase();
+      return nameOptions.some((opt) => name === opt || name.includes(opt));
+    });
+    if (nameMatch) {
+      return nameMatch.value ?? nameMatch.amount ?? 0;
+    }
+  }
+
+  return 0;
 }
 
 // Words that indicate a "plain"/default preparation — these get ranked
@@ -233,6 +275,21 @@ export async function GET(request: Request) {
             seenFdcIds.add(f.fdcId);
             allFoods.push(f);
           }
+        }
+      }
+
+      // TEMP DEBUG: if fiber extraction comes back 0 for the first result,
+      // log its raw foodNutrients so we can see USDA's actual response
+      // shape and confirm whether the extraction fix worked.
+      if (allFoods.length > 0) {
+        const fiberCheck = extractNutrient(allFoods[0], NUTRIENT_NUMBERS.fiber);
+        if (fiberCheck === 0) {
+          console.log(
+            "Fiber extraction returned 0 for:",
+            allFoods[0].description,
+            "raw foodNutrients sample:",
+            JSON.stringify(allFoods[0].foodNutrients?.slice(0, 25))
+          );
         }
       }
 
