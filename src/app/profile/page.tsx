@@ -101,6 +101,15 @@ export default function ProfilePage() {
     setResetMessage(`Cleared ${data.deletedCount} log entr${data.deletedCount === 1 ? "y" : "ies"}.`);
   }
 
+  async function handleReplayTour() {
+    await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hasSeenTour: false }),
+    });
+    router.push("/");
+  }
+
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-md flex-1 px-4 pt-6">
@@ -187,6 +196,13 @@ export default function ProfilePage() {
         className="mt-6 w-full rounded-lg bg-emerald-600 px-3 py-3 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
       >
         {saving ? "Saving…" : "Save changes"}
+      </button>
+
+      <button
+        onClick={handleReplayTour}
+        className="mt-3 w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm font-medium text-neutral-600 transition hover:border-emerald-200 hover:text-emerald-700"
+      >
+        Replay app tour
       </button>
 
       <button

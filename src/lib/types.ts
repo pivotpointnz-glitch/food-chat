@@ -15,6 +15,7 @@ export interface Profile {
   target_protein_g: number | null;
   target_carbs_g: number | null;
   target_fat_g: number | null;
+  has_seen_tour: boolean;
   created_at: string;
 }
 

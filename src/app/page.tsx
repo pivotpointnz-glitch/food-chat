@@ -4,6 +4,7 @@ import { Mic, Camera, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { MacroProgress } from "@/components/MacroProgress";
 import { LogRow } from "@/components/LogRow";
+import { TourLauncher } from "@/components/TourLauncher";
 import { startOfTodayNZ_ISO, todayDisplayNZ } from "@/lib/nzTime";
 import type { LogEntryWithFood, Profile } from "@/lib/types";
 
@@ -54,7 +55,7 @@ export default async function HomePage() {
           <h1 className="text-xl font-semibold text-neutral-900">{todayDisplayNZ()}</h1>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/history" className="text-sm font-medium text-neutral-500">
+          <Link id="tour-history" href="/history" className="text-sm font-medium text-neutral-500">
             History
           </Link>
           <Link href="/foods" className="text-sm font-medium text-neutral-500">
@@ -114,6 +115,7 @@ export default async function HomePage() {
       </div>
 
       <Link
+        id="tour-log-voice"
         href="/log/voice"
         className="fixed bottom-6 left-[calc(50%-4.5rem)] flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full bg-white text-neutral-700 shadow-lg ring-1 ring-neutral-200 transition hover:bg-neutral-50"
         aria-label="Log food by voice"
@@ -121,6 +123,7 @@ export default async function HomePage() {
         <Mic size={20} strokeWidth={2} />
       </Link>
       <Link
+        id="tour-log-manual"
         href="/log/new"
         className="fixed bottom-6 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg transition hover:bg-emerald-700"
         aria-label="Log food"
@@ -128,12 +131,15 @@ export default async function HomePage() {
         <Plus size={26} strokeWidth={2.25} />
       </Link>
       <Link
+        id="tour-log-photo"
         href="/log/photo"
         className="fixed bottom-6 left-[calc(50%+4.5rem)] flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full bg-white text-neutral-700 shadow-lg ring-1 ring-neutral-200 transition hover:bg-neutral-50"
         aria-label="Log food by photo"
       >
         <Camera size={20} strokeWidth={2} />
       </Link>
+
+      <TourLauncher hasSeenTour={profile?.has_seen_tour ?? true} />
     </div>
   );
 }

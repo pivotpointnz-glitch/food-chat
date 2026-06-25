@@ -7,6 +7,7 @@ interface UpdateProfileBody {
   targetProteinG?: number | null;
   targetCarbsG?: number | null;
   targetFatG?: number | null;
+  hasSeenTour?: boolean;
 }
 
 export async function PATCH(request: Request) {
@@ -25,6 +26,7 @@ export async function PATCH(request: Request) {
   if (body.targetProteinG !== undefined) update.target_protein_g = body.targetProteinG;
   if (body.targetCarbsG !== undefined) update.target_carbs_g = body.targetCarbsG;
   if (body.targetFatG !== undefined) update.target_fat_g = body.targetFatG;
+  if (body.hasSeenTour !== undefined) update.has_seen_tour = body.hasSeenTour;
 
   const { data: profile, error } = await supabase
     .from("profiles")
