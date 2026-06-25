@@ -9,14 +9,16 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
+import { createClient } from "@/lib/supabase/client";
 import { LogRow } from "@/components/LogRow";
 import { exportHistoryToSpreadsheet } from "@/lib/exportHistory";
-import type { LogEntryWithFood } from "@/lib/types";
+import type { LogEntryWithFood, Profile } from "@/lib/types";
 
 type Tab = "day" | "week" | "month";
+type MacroKey = "calories" | "protein" | "carbs" | "fat" | "fiber";
 
 interface DayTotal {
   date: string;
@@ -36,9 +38,22 @@ function formatDisplayDate(dateStr: string): string {
   return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
+const MACRO_CONFIG: Record<
+  MacroKey,
+  { label: string; unit: string; color: string; targetKey: keyof Profile }
+> = {
+  calories: { label: "Calories", unit: "kcal", color: "#059669", targetKey: "target_calories" },
+  protein: { label: "Protein", unit: "g", color: "#3b82f6", targetKey: "target_protein_g" },
+  carbs: { label: "Carbs", unit: "g", color: "#f59e0b", targetKey: "target_carbs_g" },
+  fat: { label: "Fat", unit: "g", color: "#fb7185", targetKey: "target_fat_g" },
+  fiber: { label: "Fiber", unit: "g", color: "#84cc16", targetKey: "target_fiber_g" },
+};
+
 export default function HistoryPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("day");
+  const [selectedMacro, setSelectedMacro] = useState<MacroKey>("calories");
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   // Day view state
   const [selectedDate, setSelectedDate] = useState(toDateString(new Date()));
@@ -50,6 +65,17 @@ export default function HistoryPage() {
   const [rangeDays, setRangeDays] = useState<DayTotal[]>([]);
   const [rangeLoading, setRangeLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    async function loadProfile() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      if (data) setProfile(data);
+    }
+    loadProfile();
+  }, []);
 
   const loadDay = useCallback(async (date: string) => {
     setDayLoading(true);
@@ -261,9 +287,30 @@ export default function HistoryPage() {
                 </div>
               )}
 
-              <div className="mt-4 h-56 rounded-2xl border border-neutral-100 bg-white p-2 shadow-sm">
+              <div className="mt-4 flex gap-1.5 overflow-x-auto pb-1">
+                {(Object.keys(MACRO_CONFIG) as MacroKey[]).map((key) => {
+                  const config = MACRO_CONFIG[key];
+                  const isActive = selectedMacro === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setSelectedMacro(key)}
+                      className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                        isActive
+                          ? "border-transparent text-white"
+                          : "border-neutral-200 text-neutral-600"
+                      }`}
+                      style={isActive ? { backgroundColor: config.color } : undefined}
+                    >
+                      {config.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-3 h-56 rounded-2xl border border-neutral-100 bg-white p-2 shadow-sm">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={rangeDays} margin={{ top: 8, right: 8, bottom: 0, left: -8 }}>
+                  <LineChart data={rangeDays} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f1f1" />
                     <XAxis
                       dataKey="date"
@@ -271,64 +318,39 @@ export default function HistoryPage() {
                       tickFormatter={(d) => formatDisplayDate(d).split(" ")[0]}
                       interval={tab === "month" ? 4 : 0}
                     />
-                    <YAxis yAxisId="calories" tick={{ fontSize: 10 }} width={36} />
-                    <YAxis yAxisId="grams" orientation="right" tick={{ fontSize: 10 }} width={32} />
+                    <YAxis tick={{ fontSize: 10 }} width={36} />
                     <Tooltip
                       labelFormatter={(d) => formatDisplayDate(d as string)}
-                      formatter={(value, name) => [
-                        `${Math.round(Number(value) || 0)}${name === "calories" ? " kcal" : "g"}`,
-                        typeof name === "string" ? name[0].toUpperCase() + name.slice(1) : name,
+                      formatter={(value) => [
+                        `${Math.round(Number(value) || 0)} ${MACRO_CONFIG[selectedMacro].unit}`,
+                        MACRO_CONFIG[selectedMacro].label,
                       ]}
                     />
-                    <Legend
-                      wrapperStyle={{ fontSize: 11 }}
-                      formatter={(value) => value[0].toUpperCase() + value.slice(1)}
-                    />
+                    {profile && (profile[MACRO_CONFIG[selectedMacro].targetKey] as number | null) && (
+                      <ReferenceLine
+                        y={profile[MACRO_CONFIG[selectedMacro].targetKey] as number}
+                        stroke="#a3a3a3"
+                        strokeDasharray="4 4"
+                        label={{
+                          value: "Target",
+                          position: "insideTopRight",
+                          fontSize: 10,
+                          fill: "#a3a3a3",
+                        }}
+                      />
+                    )}
                     <Line
-                      yAxisId="calories"
                       type="monotone"
-                      dataKey="calories"
-                      stroke="#059669"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                    <Line
-                      yAxisId="grams"
-                      type="monotone"
-                      dataKey="protein"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                    <Line
-                      yAxisId="grams"
-                      type="monotone"
-                      dataKey="carbs"
-                      stroke="#f59e0b"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                    <Line
-                      yAxisId="grams"
-                      type="monotone"
-                      dataKey="fat"
-                      stroke="#fb7185"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                    <Line
-                      yAxisId="grams"
-                      type="monotone"
-                      dataKey="fiber"
-                      stroke="#84cc16"
-                      strokeWidth={2}
-                      dot={false}
+                      dataKey={selectedMacro}
+                      stroke={MACRO_CONFIG[selectedMacro].color}
+                      strokeWidth={2.5}
+                      dot={{ r: 3 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
               <p className="mt-1 text-center text-[11px] text-neutral-400">
-                Left axis: calories (kcal) · Right axis: protein/carbs/fat/fiber (g)
+                {MACRO_CONFIG[selectedMacro].label} ({MACRO_CONFIG[selectedMacro].unit}) per day
               </p>
 
               <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm">
