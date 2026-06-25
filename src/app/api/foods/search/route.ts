@@ -74,11 +74,19 @@ const PROCESSING_QUALIFIER_WORDS = [
 /**
  * Scores how closely a food name matches the search query, lower is better.
  * USDA's own result ordering isn't reliably relevance-sorted, so we re-rank
- * ourselves with three layers:
+ * ourselves with two layers:
  *   1. How closely the name matches the query text (exact > starts-with > contains)
  *   2. Whether the query itself asked for a specific preparation (if so, that
- *      preparation is preferred; otherwise plain/raw is preferred)
- *   3. Fewer extra qualifiers/clauses beats more (shorter, simpler name wins)
+ *      preparation is preferred; otherwise plain/raw is preferred, and
+ *      "cooked"/"boiled"/etc are penalized)
+ *
+ * Note: we deliberately do NOT penalize based on how many comma-separated
+ * clauses a name has. USDA's naming convention bundles legitimate detail
+ * (grain length, raw/cooked, enrichment) into the name itself, so the
+ * correct plain answer (e.g. "Rice, white, long-grain, regular, raw,
+ * unenriched") often has MORE clauses than an irrelevant one — clause
+ * count is not a reliable signal for "plainness" and penalizing it
+ * previously buried correct answers under their own normal level of detail.
  */
 function relevanceScore(name: string, query: string): number {
   const lowerName = name.toLowerCase();
@@ -99,17 +107,14 @@ function relevanceScore(name: string, query: string): number {
     const processingWordCount = PROCESSING_QUALIFIER_WORDS.filter((w) =>
       new RegExp(`\\b${w}\\b`).test(lowerName)
     ).length;
-    preparationPenalty += processingWordCount * 2;
+    preparationPenalty += processingWordCount;
 
     // Slight bonus (negative penalty) for explicitly plain/raw entries.
     const isPlain = PLAIN_PREPARATION_WORDS.some((w) => new RegExp(`\\b${w}\\b`).test(lowerName));
     if (isPlain) preparationPenalty -= 1;
   }
 
-  // Fewer total comma-separated clauses = simpler, more generic entry.
-  const clauseCount = lowerName.split(",").length;
-
-  return textMatchScore * 100 + preparationPenalty * 10 + clauseCount + lowerName.length / 1000;
+  return textMatchScore * 100 + preparationPenalty * 10 + lowerName.length / 1000;
 }
 
 export async function GET(request: Request) {
