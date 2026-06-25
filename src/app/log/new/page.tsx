@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { Food, MealType } from "@/lib/types";
 import { ALL_UNITS, toGramsEquivalent } from "@/lib/units";
@@ -44,7 +44,17 @@ export default function NewLogPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Guards against out-of-order network responses: if the user types
+  // quickly, an earlier (shorter) query's response could in principle
+  // arrive after a later (more complete) query's response and overwrite
+  // it with stale results. Each search call captures the query it was
+  // *actually* searching for and the most recent query at request time;
+  // we only apply a response if its query still matches the latest one.
+  const latestQueryRef = useRef("");
+
   const runSearch = useCallback(async (q: string) => {
+    latestQueryRef.current = q;
+
     if (q.trim().length < 2) {
       setPersonalResults([]);
       setUsdaResults([]);
@@ -54,10 +64,15 @@ export default function NewLogPage() {
     try {
       const res = await fetch(`/api/foods/search?q=${encodeURIComponent(q)}`);
       const data = await res.json();
+
+      // Stale response guard: only apply results if this is still the
+      // most recently requested query.
+      if (latestQueryRef.current !== q) return;
+
       setPersonalResults(data.personal ?? []);
       setUsdaResults(data.usda ?? []);
     } finally {
-      setSearching(false);
+      if (latestQueryRef.current === q) setSearching(false);
     }
   }, []);
 

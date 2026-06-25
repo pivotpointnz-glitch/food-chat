@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { Food } from "@/lib/types";
 import { ALL_UNITS, toGramsEquivalent } from "@/lib/units";
@@ -81,7 +81,11 @@ export function FoodForm({ title, initialData, onSave, onSaved, saveLabel = "Sav
   const [usdaResults, setUsdaResults] = useState<UsdaResult[]>([]);
   const [searching, setSearching] = useState(false);
 
+  const latestQueryRef = useRef("");
+
   const runSearch = useCallback(async (q: string) => {
+    latestQueryRef.current = q;
+
     if (q.trim().length < 2) {
       setPersonalResults([]);
       setUsdaResults([]);
@@ -91,10 +95,14 @@ export function FoodForm({ title, initialData, onSave, onSaved, saveLabel = "Sav
     try {
       const res = await fetch(`/api/foods/search?q=${encodeURIComponent(q)}`);
       const data = await res.json();
+
+      // Stale response guard: ignore if a newer query has since been typed.
+      if (latestQueryRef.current !== q) return;
+
       setPersonalResults(data.personal ?? []);
       setUsdaResults(data.usda ?? []);
     } finally {
-      setSearching(false);
+      if (latestQueryRef.current === q) setSearching(false);
     }
   }, []);
 

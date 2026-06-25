@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { Food, MealType, LogSource } from "@/lib/types";
 
 interface UsdaResult {
@@ -79,11 +79,18 @@ export function ConfirmItemsList({
   );
   const [savingAll, setSavingAll] = useState(false);
 
+  // Per-item guard against stale out-of-order network responses: if
+  // someone types quickly, an earlier (shorter) query's response could
+  // arrive after a later one and overwrite it with stale results.
+  const latestQueryByIndex = useRef<Record<number, string>>({});
+
   function updateItem(index: number, patch: Partial<ConfirmItem>) {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   }
 
   const runItemSearch = useCallback(async (index: number, query: string) => {
+    latestQueryByIndex.current[index] = query;
+
     if (query.trim().length < 2) {
       updateItem(index, { personalResults: [], usdaResults: [] });
       return;
@@ -92,16 +99,32 @@ export function ConfirmItemsList({
     try {
       const res = await fetch(`/api/foods/search?q=${encodeURIComponent(query)}`);
       const data = await res.json();
+
+      // Stale response guard.
+      if (latestQueryByIndex.current[index] !== query) return;
+
       updateItem(index, {
         personalResults: data.personal ?? [],
         usdaResults: data.usda ?? [],
         searching: false,
       });
     } catch {
-      updateItem(index, { searching: false });
+      if (latestQueryByIndex.current[index] === query) {
+        updateItem(index, { searching: false });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Debounce search-as-you-type per item to reduce request frequency and
+  // the chance of out-of-order responses in the first place.
+  const debounceTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+
+  function handleSearchInputChange(index: number, value: string) {
+    updateItem(index, { searchQuery: value });
+    if (debounceTimers.current[index]) clearTimeout(debounceTimers.current[index]);
+    debounceTimers.current[index] = setTimeout(() => runItemSearch(index, value), 350);
+  }
 
   // Auto-search each item's default query on mount.
   useEffect(() => {
@@ -227,10 +250,7 @@ export function ConfirmItemsList({
                 <input
                   type="text"
                   value={item.searchQuery}
-                  onChange={(e) => {
-                    updateItem(i, { searchQuery: e.target.value });
-                    runItemSearch(i, e.target.value);
-                  }}
+                  onChange={(e) => handleSearchInputChange(i, e.target.value)}
                   className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 {item.searching && <p className="mt-1 text-xs text-neutral-400">Searching…</p>}
