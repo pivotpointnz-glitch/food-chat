@@ -91,14 +91,32 @@ const PROCESSING_QUALIFIER_WORDS = [
 function relevanceScore(name: string, query: string): number {
   const lowerName = name.toLowerCase();
   const lowerQuery = query.toLowerCase().trim();
-  const firstClause = lowerName.split(",")[0].trim();
+  const clauses = lowerName.split(",").map((c) => c.trim());
+  const firstClause = clauses[0] ?? "";
+  // USDA often splits a food's core identity and its primary descriptor
+  // across the first two clauses (e.g. "Rice, brown, long-grain, raw" —
+  // "rice" and "brown" are separate clauses). Treat the first two
+  // combined as the food's "primary identity" for matching purposes.
+  const primaryIdentity = clauses.slice(0, 2).join(" ");
+  const queryWords = lowerQuery.split(/\s+/).filter(Boolean);
+
+  const wordInName = (w: string, text: string) => new RegExp(`\\b${w}\\b`).test(text);
+  const allWordsInPrimaryIdentity = queryWords.every((w) => wordInName(w, primaryIdentity));
+  const allWordsInName = queryWords.every((w) => wordInName(w, lowerName));
 
   let textMatchScore: number;
   if (lowerName === lowerQuery) textMatchScore = 0;
   else if (firstClause === lowerQuery) textMatchScore = 0.5;
   else if (lowerName.startsWith(lowerQuery) || lowerName.startsWith(`${lowerQuery},`)) textMatchScore = 1;
   else if (new RegExp(`\\b${lowerQuery}\\b`).test(firstClause)) textMatchScore = 1.5;
+  // All query words present within the food's primary identity (first two
+  // clauses), regardless of order — this is what catches "brown rice"
+  // matching "Rice, brown, ..." even though USDA splits the food and its
+  // descriptor across separate clauses in reversed order from how people
+  // naturally search.
+  else if (queryWords.length > 1 && allWordsInPrimaryIdentity) textMatchScore = 2;
   else if (new RegExp(`\\b${lowerQuery}\\b`).test(lowerName)) textMatchScore = 4;
+  else if (queryWords.length > 1 && allWordsInName) textMatchScore = 4.5;
   else textMatchScore = 5;
 
   // Did the query itself mention a specific preparation? If so, don't
@@ -161,7 +179,24 @@ export async function GET(request: Request) {
 
   // 2. Query USDA live for anything not already cached. We still show these
   // as separate "USDA" results; selecting one will cache it into `foods`.
+  //
+  // USDA's own search relevance can behave very differently for a single
+  // word vs. a two-word phrase: a query like "brown rice" sometimes favors
+  // names where the words sit close together (e.g. "rice cakes, brown
+  // rice") over the canonical "Rice, brown, long-grain, raw" — because
+  // USDA names things in "[food], [descriptor]" order, not "[descriptor]
+  // [food]" order. To compensate, for two-word queries we also try the
+  // words in reversed/comma order (USDA's natural convention) as a second
+  // query, and merge results from both — this catches cases the direct
+  // phrase search alone would miss.
   const apiKey = process.env.USDA_FDC_API_KEY;
+  const queryVariants = [query];
+
+  const words = query.trim().split(/\s+/);
+  if (words.length === 2) {
+    queryVariants.push(`${words[1]}, ${words[0]}`);
+  }
+
   let usdaResults: Array<{
     fdcId: number;
     name: string;
@@ -174,37 +209,44 @@ export async function GET(request: Request) {
 
   if (apiKey) {
     try {
-      const usdaRes = await fetch(
-        `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query,
-            pageSize: 200,
-            dataType: ["Foundation", "SR Legacy"],
-          }),
-        }
+      const responses = await Promise.all(
+        queryVariants.map((variant) =>
+          fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              query: variant,
+              pageSize: 200,
+              dataType: ["Foundation", "SR Legacy"],
+            }),
+          }).then((r) => (r.ok ? r.json() : { foods: [] }))
+        )
       );
 
-      if (usdaRes.ok) {
-        const data = await usdaRes.json();
-        const foods: UsdaFood[] = data.foods ?? [];
-
-        usdaResults = foods
-          .filter((f) => !f.brandOwner) // belt-and-suspenders: drop anything with a brand owner, regardless of dataType
-          .map((f) => ({
-            fdcId: f.fdcId,
-            name: f.description,
-            brand: f.brandOwner ?? null,
-            caloriesPer100: extractNutrient(f, NUTRIENT_NUMBERS.calories),
-            proteinPer100: extractNutrient(f, NUTRIENT_NUMBERS.protein),
-            carbsPer100: extractNutrient(f, NUTRIENT_NUMBERS.carbs),
-            fatPer100: extractNutrient(f, NUTRIENT_NUMBERS.fat),
-          }))
-          .sort((a, b) => relevanceScore(a.name, query) - relevanceScore(b.name, query))
-          .slice(0, 5);
+      const seenFdcIds = new Set<number>();
+      const allFoods: UsdaFood[] = [];
+      for (const data of responses) {
+        for (const f of (data.foods ?? []) as UsdaFood[]) {
+          if (!seenFdcIds.has(f.fdcId)) {
+            seenFdcIds.add(f.fdcId);
+            allFoods.push(f);
+          }
+        }
       }
+
+      usdaResults = allFoods
+        .filter((f) => !f.brandOwner) // belt-and-suspenders: drop anything with a brand owner, regardless of dataType
+        .map((f) => ({
+          fdcId: f.fdcId,
+          name: f.description,
+          brand: f.brandOwner ?? null,
+          caloriesPer100: extractNutrient(f, NUTRIENT_NUMBERS.calories),
+          proteinPer100: extractNutrient(f, NUTRIENT_NUMBERS.protein),
+          carbsPer100: extractNutrient(f, NUTRIENT_NUMBERS.carbs),
+          fatPer100: extractNutrient(f, NUTRIENT_NUMBERS.fat),
+        }))
+        .sort((a, b) => relevanceScore(a.name, query) - relevanceScore(b.name, query))
+        .slice(0, 5);
     } catch {
       // USDA being unreachable shouldn't break personal-library search.
     }
