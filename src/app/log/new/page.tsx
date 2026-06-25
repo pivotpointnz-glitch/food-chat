@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { Food, MealType } from "@/lib/types";
+import { ALL_UNITS, toGramsEquivalent } from "@/lib/units";
 
 interface UsdaResult {
   fdcId: number;
@@ -37,6 +38,8 @@ export default function NewLogPage() {
   const [searching, setSearching] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [quantity, setQuantity] = useState(100);
+  const [unit, setUnit] = useState("g");
+  const [gramsPerEach, setGramsPerEach] = useState<number | null>(null);
   const [mealType, setMealType] = useState<MealType>(defaultMealForNow());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,11 +80,15 @@ export default function NewLogPage() {
     }
     setSelectedFood(data.food);
     setQuantity(data.food.default_quantity ?? 100);
+    setUnit(data.food.base_unit ?? "g");
+    setGramsPerEach(data.food.grams_per_default_unit ?? null);
   }
 
   function selectPersonalFood(food: Food) {
     setSelectedFood(food);
     setQuantity(food.default_quantity ?? 100);
+    setUnit(food.is_composite ? food.base_unit : food.default_unit);
+    setGramsPerEach(food.grams_per_default_unit ?? null);
   }
 
   async function handleSave() {
@@ -89,13 +96,7 @@ export default function NewLogPage() {
     setSaving(true);
     setError(null);
 
-    // grams_equivalent: since default_unit is usually 'g' or 'ml' for most
-    // foods we cache, quantity already approximates grams. For foods with a
-    // different default_unit and a conversion factor, apply it.
-    const gramsEquivalent =
-      selectedFood.grams_per_default_unit && selectedFood.default_unit !== "g" && selectedFood.default_unit !== "ml"
-        ? quantity * selectedFood.grams_per_default_unit
-        : quantity;
+    const gramsEquivalent = toGramsEquivalent(quantity, unit, gramsPerEach);
 
     const res = await fetch("/api/logs", {
       method: "POST",
@@ -103,7 +104,7 @@ export default function NewLogPage() {
       body: JSON.stringify({
         foodId: selectedFood.id,
         quantity,
-        unit: selectedFood.default_unit,
+        unit,
         gramsEquivalent,
         mealType,
         source: "manual",
@@ -124,7 +125,8 @@ export default function NewLogPage() {
 
   // --- Quantity/macro preview screen ---
   if (selectedFood) {
-    const factor = quantity / 100;
+    const gramsEquivalent = toGramsEquivalent(quantity, unit, gramsPerEach);
+    const factor = gramsEquivalent / 100;
     const preview = {
       calories: selectedFood.calories_per_100 * factor,
       protein: selectedFood.protein_g_per_100 * factor,
@@ -145,16 +147,44 @@ export default function NewLogPage() {
         {selectedFood.brand && <p className="text-sm text-neutral-500">{selectedFood.brand}</p>}
 
         <div className="mt-6">
-          <label className="block text-sm font-medium text-neutral-700">
-            Quantity ({selectedFood.default_unit})
-          </label>
-          <input
-            type="number"
-            min={0}
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-lg focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          />
+          <label className="block text-sm font-medium text-neutral-700">Quantity</label>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value))}
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-lg focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <select
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              className="rounded-lg border border-neutral-300 px-2 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            >
+              {ALL_UNITS.map((u) => (
+                <option key={u.value} value={u.value}>
+                  {u.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {unit === "each" && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-neutral-600">
+              <span>1 each =</span>
+              <input
+                type="number"
+                value={gramsPerEach ?? 0}
+                onChange={(e) => setGramsPerEach(Number(e.target.value))}
+                className="w-20 rounded border border-neutral-200 px-2 py-1 text-right"
+              />
+              <span>g</span>
+            </div>
+          )}
+          {unit !== "g" && unit !== "each" && (
+            <p className="mt-1 text-xs text-neutral-400">
+              ≈ {Math.round(gramsEquivalent)}{selectedFood.base_unit === "ml" ? "ml" : "g"}
+            </p>
+          )}
         </div>
 
         <div className="mt-4">
