@@ -25,6 +25,11 @@ const TOUR_STEPS: TourStep[] = [
     description: "Snap a photo of your plate and we'll identify what's on it for you to confirm.",
   },
   {
+    targetId: "tour-my-foods",
+    title: "Save your own foods",
+    description: "Create custom foods and recipes — like your usual smoothie — so logging them is a single tap next time.",
+  },
+  {
     targetId: "tour-history",
     title: "Track your history",
     description: "See daily, weekly, and monthly trends, and export your log as a spreadsheet anytime.",

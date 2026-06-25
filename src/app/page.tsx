@@ -58,7 +58,7 @@ export default async function HomePage() {
           <Link id="tour-history" href="/history" className="text-sm font-medium text-neutral-500">
             History
           </Link>
-          <Link href="/foods" className="text-sm font-medium text-neutral-500">
+          <Link id="tour-my-foods" href="/foods" className="text-sm font-medium text-neutral-500">
             My foods
           </Link>
           <Link
