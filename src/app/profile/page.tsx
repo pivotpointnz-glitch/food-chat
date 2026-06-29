@@ -25,6 +25,9 @@ export default function ProfilePage() {
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
 
+  const [backfillRunning, setBackfillRunning] = useState(false);
+  const [backfillMessage, setBackfillMessage] = useState<string | null>(null);
+
   useEffect(() => {
     async function load() {
       const supabase = createClient();
@@ -111,6 +114,39 @@ export default function ProfilePage() {
       body: JSON.stringify({ hasSeenTour: false }),
     });
     router.push("/");
+  }
+
+  async function handleBackfillFiber() {
+    setBackfillRunning(true);
+    setBackfillMessage("Step 1: refreshing cached foods…");
+
+    const step1 = await fetch("/api/admin/backfill-fiber", { method: "POST" });
+    const step1Data = await step1.json();
+
+    if (step1Data.error) {
+      setBackfillMessage(`Error: ${step1Data.error}`);
+      setBackfillRunning(false);
+      return;
+    }
+
+    setBackfillMessage(
+      `Step 1 done: updated ${step1Data.results.filter((r: { updated: boolean }) => r.updated).length} of ${step1Data.totalCandidates} foods. Step 2: recalculating recipes…`
+    );
+
+    const step2 = await fetch("/api/admin/backfill-fiber", { method: "PATCH" });
+    const step2Data = await step2.json();
+
+    setBackfillRunning(false);
+
+    if (step2Data.error) {
+      setBackfillMessage(`Step 1 done. Step 2 error: ${step2Data.error}`);
+      return;
+    }
+
+    const recipesUpdated = step2Data.results.filter((r: { updated: boolean }) => r.updated).length;
+    setBackfillMessage(
+      `Done! Updated ${step1Data.results.filter((r: { updated: boolean }) => r.updated).length} cached foods and recalculated ${recipesUpdated} recipes.`
+    );
   }
 
   if (loading) {
@@ -217,6 +253,23 @@ export default function ProfilePage() {
       >
         Replay app tour
       </button>
+
+      <div className="mt-6 rounded-xl border border-amber-100 bg-amber-50/50 p-4">
+        <h2 className="text-sm font-semibold text-amber-800">One-time fix</h2>
+        <p className="mt-1 text-xs text-amber-700">
+          Refreshes fiber data for foods cached before fiber tracking existed (fixes 0g fiber
+          showing for things like cabbage, carrots, etc. in older recipes). Safe to run more than
+          once.
+        </p>
+        {backfillMessage && <p className="mt-2 text-xs text-amber-800">{backfillMessage}</p>}
+        <button
+          onClick={handleBackfillFiber}
+          disabled={backfillRunning}
+          className="mt-3 w-full rounded-lg bg-amber-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-amber-700 disabled:opacity-50"
+        >
+          {backfillRunning ? "Running…" : "Fix fiber data"}
+        </button>
+      </div>
 
       <button
         onClick={handleLogout}
