@@ -292,6 +292,23 @@ export async function GET(request: Request) {
           _nutrientCount: f.foodNutrients?.length ?? 0,
         }))
         .sort((a, b) => {
+          // A food with both zero calories AND zero fat AND zero protein
+          // AND zero carbs is almost certainly an incomplete USDA record
+          // (e.g. some newer Foundation Foods entries only measure a
+          // A food showing 0 calories is almost always a sign of missing
+          // macro data (some Foundation Foods entries target specific
+          // nutrients and simply don't have calories/fat/protein/carbs
+          // measured yet), not a food that's genuinely calorie-free —
+          // that combination essentially never occurs in a real food
+          // (the rare actual exceptions, like water, aren't things people
+          // search for as "olive oil" or "rice"). Push these to the very
+          // bottom regardless of name relevance or other nutrient counts,
+          // since a complete record is always the better choice when
+          // available.
+          const aIsEmpty = a.caloriesPer100 === 0;
+          const bIsEmpty = b.caloriesPer100 === 0;
+          if (aIsEmpty !== bIsEmpty) return aIsEmpty ? 1 : -1;
+
           const relevanceDiff = relevanceScore(a.name, query) - relevanceScore(b.name, query);
           // When two results are close in relevance, prefer the one with a
           // more complete nutrient profile — some older USDA entries have
