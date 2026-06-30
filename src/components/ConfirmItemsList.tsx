@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Food, MealType, LogSource } from "@/lib/types";
+import { ALL_UNITS, toGramsEquivalent } from "@/lib/units";
 
 interface UsdaResult {
   fdcId: number;
@@ -26,6 +27,8 @@ interface ConfirmItem {
   unit: string;
   selectedFood: Food | null;
   loggedQuantity: number;
+  loggedUnit: string;
+  gramsPerEach: number | null;
   mealType: MealType;
   searchQuery: string;
   personalResults: Food[];
@@ -80,6 +83,8 @@ export function ConfirmItemsList({
       unit: item.unit ?? "g",
       selectedFood: null,
       loggedQuantity: item.quantity ?? 100,
+      loggedUnit: item.unit ?? "g",
+      gramsPerEach: null,
       mealType: defaultMealForNow(),
       searchQuery: item.name,
       personalResults: [],
@@ -154,7 +159,7 @@ export function ConfirmItemsList({
   }, []);
 
   function selectPersonalFood(index: number, food: Food) {
-    updateItem(index, { selectedFood: food, loggedQuantity: food.default_quantity });
+    updateItem(index, { selectedFood: food, loggedQuantity: food.default_quantity, loggedUnit: food.base_unit ?? "g" });
   }
 
   async function selectUsdaFood(index: number, result: UsdaResult) {
@@ -165,7 +170,7 @@ export function ConfirmItemsList({
     });
     const data = await res.json();
     if (data.food) {
-      updateItem(index, { selectedFood: data.food, loggedQuantity: data.food.default_quantity });
+      updateItem(index, { selectedFood: data.food, loggedQuantity: data.food.default_quantity, loggedUnit: data.food.base_unit ?? "g" });
     }
   }
 
@@ -175,14 +180,16 @@ export function ConfirmItemsList({
 
     const loggedAt = new Date(`${logDate}T${logTime}:00`).toISOString();
 
+    const gramsEquivalent = toGramsEquivalent(item.loggedQuantity, item.loggedUnit, item.gramsPerEach);
+
     const res = await fetch("/api/logs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         foodId: item.selectedFood.id,
         quantity: item.loggedQuantity,
-        unit: item.selectedFood.default_unit,
-        gramsEquivalent: item.loggedQuantity,
+        unit: item.loggedUnit,
+        gramsEquivalent,
         mealType: item.mealType,
         source,
         loggedAt,
@@ -272,7 +279,29 @@ export function ConfirmItemsList({
                     onChange={(e) => updateItem(i, { loggedQuantity: Number(e.target.value) })}
                     className="w-20 rounded border border-neutral-200 px-2 py-1 text-sm"
                   />
-                  <span className="text-xs text-neutral-500">{item.selectedFood.default_unit}</span>
+                  <select
+                    value={item.loggedUnit}
+                    onChange={(e) => updateItem(i, { loggedUnit: e.target.value })}
+                    className="rounded border border-neutral-200 px-2 py-1 text-xs"
+                  >
+                    {ALL_UNITS.map((u) => (
+                      <option key={u.value} value={u.value}>
+                        {u.label}
+                      </option>
+                    ))}
+                  </select>
+                  {item.loggedUnit === "each" && (
+                    <div className="flex items-center gap-1 text-xs text-neutral-500">
+                      <span>=</span>
+                      <input
+                        type="number"
+                        value={item.gramsPerEach ?? 0}
+                        onChange={(e) => updateItem(i, { gramsPerEach: Number(e.target.value) })}
+                        className="w-14 rounded border border-neutral-200 px-1 py-1 text-right text-sm"
+                      />
+                      <span>g each</span>
+                    </div>
+                  )}
                   <select
                     value={item.mealType}
                     onChange={(e) => updateItem(i, { mealType: e.target.value as MealType })}
