@@ -82,7 +82,7 @@ export default function NewLogPage() {
       // most recently requested query.
       if (latestQueryRef.current !== q) return;
 
-      setPersonalResults(data.personal ?? []);
+      setPersonalResults([...(data.personal ?? []), ...(data.nz ?? [])]);
       setUsdaResults(data.usda ?? []);
     } finally {
       if (latestQueryRef.current === q) setSearching(false);

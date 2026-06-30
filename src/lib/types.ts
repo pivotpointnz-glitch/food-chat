@@ -2,7 +2,7 @@
 // If you have the Supabase CLI set up later, you can replace this with
 // `supabase gen types typescript` output for full auto-sync.
 
-export type FoodSource = "usda" | "custom";
+export type FoodSource = "usda" | "custom" | "nz";
 export type FoodVisibility = "private" | "shared";
 export type BaseUnit = "g" | "ml";
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
@@ -26,6 +26,7 @@ export interface Food {
   source: FoodSource;
   visibility: FoodVisibility;
   usda_fdc_id: string | null;
+  nz_food_id: string | null;
   is_composite: boolean;
   name: string;
   brand: string | null;

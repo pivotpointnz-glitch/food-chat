@@ -213,12 +213,26 @@ export async function GET(request: Request) {
   // custom foods are never excluded, even if you happened to fill in a
   // brand field for one.
   const personalFiltered = (personalRaw ?? []).filter(
-    (f) => f.source === "custom" || !f.brand
+    (f) => f.source === "custom" || f.source === "nz" || !f.brand
   );
 
-  const personal = personalFiltered
+  // Split into NZ database results and user's own custom foods separately,
+  // since NZ foods act as our primary data source now.
+  const nzResults = personalFiltered
+    .filter((f) => f.source === "nz")
     .sort((a, b) => relevanceScore(a.name, query) - relevanceScore(b.name, query))
     .slice(0, 5);
+
+  const personal = personalFiltered
+    .filter((f) => f.source !== "nz")
+    .sort((a, b) => relevanceScore(a.name, query) - relevanceScore(b.name, query))
+    .slice(0, 5);
+
+  // Only call USDA live if NZ database returned fewer than 2 results —
+  // meaning the food genuinely isn't in the NZ dataset (unusual ingredients,
+  // very specific items, etc). This preserves USDA as a fallback without
+  // cluttering results when NZ already has good matches.
+  const nzHasSufficientResults = nzResults.length >= 2;
 
   // 2. Query USDA live for anything not already cached. We still show these
   // as separate "USDA" results; selecting one will cache it into `foods`.
@@ -251,7 +265,7 @@ export async function GET(request: Request) {
     fiberPer100: number;
   }> = [];
 
-  if (apiKey) {
+  if (apiKey && !nzHasSufficientResults) {
     try {
       const responses = await Promise.all(
         queryVariants.map((variant) =>
@@ -279,7 +293,7 @@ export async function GET(request: Request) {
       }
 
       usdaResults = allFoods
-        .filter((f) => !f.brandOwner) // belt-and-suspenders: drop anything with a brand owner, regardless of dataType
+        .filter((f) => !f.brandOwner)
         .map((f) => ({
           fdcId: f.fdcId,
           name: f.description,
@@ -292,29 +306,11 @@ export async function GET(request: Request) {
           _nutrientCount: f.foodNutrients?.length ?? 0,
         }))
         .sort((a, b) => {
-          // A food with both zero calories AND zero fat AND zero protein
-          // AND zero carbs is almost certainly an incomplete USDA record
-          // (e.g. some newer Foundation Foods entries only measure a
-          // A food showing 0 calories is almost always a sign of missing
-          // macro data (some Foundation Foods entries target specific
-          // nutrients and simply don't have calories/fat/protein/carbs
-          // measured yet), not a food that's genuinely calorie-free —
-          // that combination essentially never occurs in a real food
-          // (the rare actual exceptions, like water, aren't things people
-          // search for as "olive oil" or "rice"). Push these to the very
-          // bottom regardless of name relevance or other nutrient counts,
-          // since a complete record is always the better choice when
-          // available.
           const aIsEmpty = a.caloriesPer100 === 0;
           const bIsEmpty = b.caloriesPer100 === 0;
           if (aIsEmpty !== bIsEmpty) return aIsEmpty ? 1 : -1;
 
           const relevanceDiff = relevanceScore(a.name, query) - relevanceScore(b.name, query);
-          // When two results are close in relevance, prefer the one with a
-          // more complete nutrient profile — some older USDA entries have
-          // sparse data (missing fiber and other nutrients) even though
-          // their name matches just as well, and a more complete record is
-          // generally the better choice to surface first.
           if (Math.abs(relevanceDiff) < 50) {
             return b._nutrientCount - a._nutrientCount;
           }
@@ -323,7 +319,7 @@ export async function GET(request: Request) {
         .slice(0, 5)
         .map(({ _nutrientCount, ...rest }) => rest);
     } catch {
-      // USDA being unreachable shouldn't break personal-library search.
+      // USDA being unreachable shouldn't break NZ-based search.
     }
   }
 
@@ -331,5 +327,7 @@ export async function GET(request: Request) {
   const cachedFdcIds = new Set((personal ?? []).map((f) => f.usda_fdc_id).filter(Boolean));
   const usda = usdaResults.filter((f) => !cachedFdcIds.has(String(f.fdcId)));
 
-  return NextResponse.json({ personal: personal ?? [], usda });
+  // Return NZ results as the primary food database, personal custom foods
+  // separately, and USDA only as a fallback when NZ had insufficient results.
+  return NextResponse.json({ personal: personal ?? [], nz: nzResults, usda });
 }

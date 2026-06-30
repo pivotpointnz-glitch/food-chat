@@ -103,7 +103,7 @@ export function FoodForm({ title, initialData, onSave, onSaved, saveLabel = "Sav
       // Stale response guard: ignore if a newer query has since been typed.
       if (latestQueryRef.current !== q) return;
 
-      setPersonalResults(data.personal ?? []);
+      setPersonalResults([...(data.personal ?? []), ...(data.nz ?? [])]);
       setUsdaResults(data.usda ?? []);
     } finally {
       if (latestQueryRef.current === q) setSearching(false);

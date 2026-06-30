@@ -121,7 +121,7 @@ export function ConfirmItemsList({
       if (latestQueryByIndex.current[index] !== query) return;
 
       updateItem(index, {
-        personalResults: data.personal ?? [],
+        personalResults: [...(data.personal ?? []), ...(data.nz ?? [])],
         usdaResults: data.usda ?? [],
         searching: false,
       });
