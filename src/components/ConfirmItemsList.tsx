@@ -249,15 +249,23 @@ export function ConfirmItemsList({
               item.saved ? "border-emerald-200 bg-emerald-50" : "border-neutral-100 bg-white"
             }`}
           >
-            <p className="text-sm font-medium text-neutral-900">
-              {showOriginalQuantity ? (
-                <>
-                  &ldquo;{item.quantity} {item.unit} {item.name}&rdquo;
-                </>
-              ) : (
-                <>{item.name}</>
-              )}
-            </p>
+            {item.selectedFood ? (
+              <p className="text-sm font-medium text-neutral-900">
+                {showOriginalQuantity ? (
+                  <>&ldquo;{item.quantity} {item.unit} {item.name}&rdquo;</>
+                ) : (
+                  <>{item.name}</>
+                )}
+              </p>
+            ) : (
+              <input
+                type="text"
+                value={item.searchQuery}
+                onChange={(e) => handleSearchInputChange(i, e.target.value)}
+                placeholder="Search for a food…"
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            )}
 
             {item.saved ? (
               <p className="mt-2 text-sm text-emerald-700">✓ Logged {item.selectedFood?.name}</p>
@@ -266,7 +274,7 @@ export function ConfirmItemsList({
                 <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2">
                   <span className="text-sm text-neutral-800">{item.selectedFood.name}</span>
                   <button
-                    onClick={() => updateItem(i, { selectedFood: null })}
+                    onClick={() => updateItem(i, { selectedFood: null, personalResults: [], usdaResults: [] })}
                     className="text-xs text-neutral-400 hover:text-red-500"
                   >
                     Change
@@ -317,12 +325,6 @@ export function ConfirmItemsList({
               </div>
             ) : (
               <div className="mt-2">
-                <input
-                  type="text"
-                  value={item.searchQuery}
-                  onChange={(e) => handleSearchInputChange(i, e.target.value)}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
                 {item.searching && <p className="mt-1 text-xs text-neutral-400">Searching…</p>}
                 {(item.personalResults.length > 0 || item.usdaResults.length > 0) && (
                   <div className="mt-2 max-h-48 overflow-y-auto divide-y divide-neutral-100 rounded-lg border border-neutral-100">
