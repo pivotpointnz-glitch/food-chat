@@ -326,6 +326,12 @@ export function ConfirmItemsList({
             ) : (
               <div className="mt-2">
                 {item.searching && <p className="mt-1 text-xs text-neutral-400">Searching…</p>}
+                {!item.searching && item.searchQuery.trim().length >= 2 &&
+                  item.personalResults.length === 0 && item.usdaResults.length === 0 && (
+                  <p className="mt-1 text-xs text-neutral-400">
+                    No results — try a different spelling or shorter term
+                  </p>
+                )}
                 {(item.personalResults.length > 0 || item.usdaResults.length > 0) && (
                   <div className="mt-2 max-h-48 overflow-y-auto divide-y divide-neutral-100 rounded-lg border border-neutral-100">
                     {item.personalResults.map((food) => (
