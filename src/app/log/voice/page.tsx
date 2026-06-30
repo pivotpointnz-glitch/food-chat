@@ -14,9 +14,14 @@ export default function VoiceLogPage() {
   const [stage, setStage] = useState<"record" | "parsing" | "confirm">("record");
   const [parseError, setParseError] = useState<string | null>(null);
   const [items, setItems] = useState<RawParsedItem[]>([]);
+  const [editedTranscript, setEditedTranscript] = useState("");
+
+  // Keep editedTranscript in sync with the live transcript while recording,
+  // but leave it editable once recording stops (so user can correct errors).
+  const displayTranscript = isListening ? transcript : (editedTranscript || transcript);
 
   async function handleParse() {
-    if (!transcript.trim()) return;
+    if (!displayTranscript.trim()) return;
     setStage("parsing");
     setParseError(null);
 
@@ -24,7 +29,7 @@ export default function VoiceLogPage() {
       const res = await fetch("/api/voice/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript }),
+        body: JSON.stringify({ transcript: displayTranscript }),
       });
       const data = await res.json();
 
@@ -84,17 +89,27 @@ export default function VoiceLogPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
                   Transcript
                 </p>
-                <p className="mt-1 text-sm text-neutral-800">{transcript}</p>
+                {isListening ? (
+                  <p className="mt-1 text-sm text-neutral-800">{transcript}</p>
+                ) : (
+                  <textarea
+                    value={displayTranscript}
+                    onChange={(e) => setEditedTranscript(e.target.value)}
+                    rows={3}
+                    className="mt-1 w-full resize-none bg-transparent text-sm text-neutral-800 focus:outline-none"
+                    placeholder="Tap to correct…"
+                  />
+                )}
               </div>
             )}
 
             {speechError && <p className="mt-4 text-sm text-red-600">{speechError}</p>}
             {parseError && <p className="mt-4 text-sm text-red-600">{parseError}</p>}
 
-            {transcript && !isListening && (
+            {displayTranscript && !isListening && (
               <div className="mt-6 flex gap-2">
                 <button
-                  onClick={reset}
+                  onClick={() => { reset(); setEditedTranscript(""); }}
                   className="flex-1 rounded-lg border border-neutral-200 px-3 py-3 text-sm font-medium text-neutral-600"
                 >
                   Clear
