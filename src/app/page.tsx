@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Mic, Camera, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { MacroProgress } from "@/components/MacroProgress";
-import { LogRow } from "@/components/LogRow";
+import { LogList } from "@/components/LogList";
 import { TourLauncher } from "@/components/TourLauncher";
 import { startOfTodayNZ_ISO, todayDisplayNZ } from "@/lib/nzTime";
 import type { LogEntryWithFood, Profile } from "@/lib/types";
@@ -112,13 +112,7 @@ export default async function HomePage() {
       <div className="mt-6">
         <h2 className="text-sm font-semibold text-neutral-700">Today&rsquo;s log</h2>
         <div className="mt-2 rounded-2xl border border-neutral-100 bg-white px-4 shadow-sm">
-          {logs.length === 0 ? (
-            <p className="py-8 text-center text-sm text-neutral-400">
-              Nothing logged yet today.
-            </p>
-          ) : (
-            logs.map((log) => <LogRow key={log.id} log={log} />)
-          )}
+          <LogList logs={logs} />
         </div>
       </div>
 
