@@ -178,7 +178,21 @@ function relevanceScore(name: string, query: string): number {
     if (isPlain) preparationPenalty -= 1;
   }
 
-  return textMatchScore * 100 + preparationPenalty * 10 + lowerName.length / 1000;
+  // Words indicating a simple, commonly-used preparation that should rank
+  // above more verbose composite descriptions. "fresh, raw" is the most
+  // useful form for tracking whole ingredients; "composite" indicates
+  // an averaged multi-sample entry which is less useful than a single-cut
+  // entry when both match equally well.
+  const SIMPLE_PREP_BONUS_WORDS = ["flesh, lean, fresh, raw"];
+  const COMPOSITE_PENALTY_WORDS = ["separable fat", "lean &"];
+
+  let simplicityBonus = 0;
+  if (!queryMentionsProcessing) {
+    if (SIMPLE_PREP_BONUS_WORDS.some((w) => lowerName.includes(w))) simplicityBonus = -1;
+    if (COMPOSITE_PENALTY_WORDS.some((w) => lowerName.includes(w))) simplicityBonus += 0.5;
+  }
+
+  return textMatchScore * 100 + preparationPenalty * 10 + simplicityBonus + lowerName.length / 1000;
 }
 
 export async function GET(request: Request) {
