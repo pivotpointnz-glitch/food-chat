@@ -208,6 +208,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: personalError.message }, { status: 500 });
   }
 
+  // Fast food chains to exclude from NZ results — these are meal-level
+  // entries (a Big Mac, a KFC burger) with no place in ingredient-based
+  // tracking. NZ grocery brands (Weet-Bix, Anchor, Wattie's, etc.) are
+  // kept since they're real products people buy and cook with.
+  const FAST_FOOD_CHAINS = [
+    "McDonald's",
+    "Kentucky Fried Chicken",
+    "KFC",
+    "Pizza Hut",
+    "Burger King",
+    "Burger Fuel",
+  ];
+  const fastFoodPattern = new RegExp(
+    FAST_FOOD_CHAINS.map((b) => b.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"),
+    "i"
+  );
+
   // Exclude any cached entry with a brand attached (covers leftover USDA
   // branded-product cache rows from before this filter existed). Your own
   // custom foods are never excluded, even if you happened to fill in a
@@ -219,7 +236,7 @@ export async function GET(request: Request) {
   // Split into NZ database results and user's own custom foods separately,
   // since NZ foods act as our primary data source now.
   const nzResults = personalFiltered
-    .filter((f) => f.source === "nz")
+    .filter((f) => f.source === "nz" && !fastFoodPattern.test(f.name))
     .sort((a, b) => relevanceScore(a.name, query) - relevanceScore(b.name, query))
     .slice(0, 5);
 
