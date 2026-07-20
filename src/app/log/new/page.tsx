@@ -352,7 +352,7 @@ export default function NewLogPage() {
       {usdaResults.length > 0 && (
         <div className="mt-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-            USDA database
+            International foods
           </h2>
           <div className="mt-1 divide-y divide-neutral-100 rounded-xl border border-neutral-100 bg-white">
             {usdaResults.map((result) => (

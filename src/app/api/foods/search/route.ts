@@ -259,11 +259,10 @@ export async function GET(request: Request) {
     .sort((a, b) => relevanceScore(a.name, query) - relevanceScore(b.name, query))
     .slice(0, 5);
 
-  // Only call USDA live if NZ database returned fewer than 2 results —
-  // meaning the food genuinely isn't in the NZ dataset (unusual ingredients,
-  // very specific items, etc). This preserves USDA as a fallback without
-  // cluttering results when NZ already has good matches.
-  const nzHasSufficientResults = nzResults.length >= 2;
+  // Only call USDA live if NZ database returned zero results —
+  // meaning the food genuinely isn't in the NZ dataset at all.
+  // If NZ returned even one result, that's better than USDA noise.
+  const nzHasSufficientResults = nzResults.length >= 1;
 
   // 2. Query USDA live for anything not already cached. We still show these
   // as separate "USDA" results; selecting one will cache it into `foods`.
