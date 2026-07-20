@@ -81,7 +81,7 @@ export default function PhotoLogPage() {
 
   async function handlePlatePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) { setMode("choose"); return; }
     setError(null);
     setPreviewUrl(URL.createObjectURL(file));
     setStage("processing");
@@ -93,24 +93,24 @@ export default function PhotoLogPage() {
         body: JSON.stringify({ imageBase64: base64, mediaType }),
       });
       const data = await res.json();
-      if (data.error) { setError(data.error); setStage("capture"); return; }
+      if (data.error) { setError(data.error); reset(); return; }
       const identified: { name: string }[] = data.items ?? [];
       if (identified.length === 0) {
         setError("Couldn't identify any food. Try a clearer shot, or log manually.");
-        setStage("capture");
+        reset();
         return;
       }
       setItems(identified.map((i) => ({ name: i.name })));
       setStage("confirm");
     } catch {
       setError("Something went wrong analyzing the photo.");
-      setStage("capture");
+      reset();
     }
   }
 
   async function handleLabelPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) { setMode("choose"); return; }
     setError(null);
     setPreviewUrl(URL.createObjectURL(file));
     setStage("processing");
@@ -122,13 +122,13 @@ export default function PhotoLogPage() {
         body: JSON.stringify({ imageBase64: base64, mediaType }),
       });
       const data = await res.json();
-      if (data.error) { setError(data.error); setStage("capture"); return; }
+      if (data.error) { setError(data.error); reset(); return; }
       setLabel(data.label);
       setLabelUnit(data.label.servingUnit ?? "g");
       setStage("label-confirm");
     } catch {
       setError("Something went wrong reading the label.");
-      setStage("capture");
+      reset();
     }
   }
 
