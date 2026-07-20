@@ -5,11 +5,9 @@ import { useRouter } from "next/navigation";
 import { Camera, ScanLine } from "lucide-react";
 import { resizeImageToBase64 } from "@/lib/imageResize";
 import { ConfirmItemsList, type RawParsedItem } from "@/components/ConfirmItemsList";
-import { ALL_UNITS } from "@/lib/units";
 import type { MealType } from "@/lib/types";
 
-type Mode = "choose" | "plate" | "label";
-type Stage = "capture" | "processing" | "confirm" | "label-confirm";
+type Stage = "choose" | "processing" | "plate-confirm" | "label-confirm";
 
 interface LabelData {
   foodName: string | null;
@@ -52,39 +50,41 @@ export default function PhotoLogPage() {
   const plateInputRef = useRef<HTMLInputElement>(null);
   const labelInputRef = useRef<HTMLInputElement>(null);
 
-  const [mode, setMode] = useState<Mode>("choose");
-  const [stage, setStage] = useState<Stage>("capture");
+  const [stage, setStage] = useState<Stage>("choose");
+  const [processingText, setProcessingText] = useState("Processing…");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [items, setItems] = useState<RawParsedItem[]>([]);
   const [label, setLabel] = useState<LabelData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Label log state
   const [labelServings, setLabelServings] = useState(1);
-  const [labelUnit, setLabelUnit] = useState("g");
   const [labelMeal, setLabelMeal] = useState<MealType>(defaultMealForNow());
   const [labelDate, setLabelDate] = useState(todayDateInputValue());
   const [labelTime, setLabelTime] = useState(nowTimeInputValue());
   const [labelSaving, setLabelSaving] = useState(false);
   const [labelError, setLabelError] = useState<string | null>(null);
 
-  function reset() {
-    setMode("choose");
-    setStage("capture");
+  function goBack() {
+    setStage("choose");
     setPreviewUrl(null);
     setItems([]);
     setLabel(null);
     setError(null);
+    setLabelError(null);
     if (plateInputRef.current) plateInputRef.current.value = "";
     if (labelInputRef.current) labelInputRef.current.value = "";
   }
 
   async function handlePlatePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) { setMode("choose"); return; }
+    if (!file) return;
+
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    setProcessingText("Looking at your plate…");
     setError(null);
-    setPreviewUrl(URL.createObjectURL(file));
     setStage("processing");
+
     try {
       const { base64, mediaType } = await resizeImageToBase64(file);
       const res = await fetch("/api/photo/parse", {
@@ -93,27 +93,38 @@ export default function PhotoLogPage() {
         body: JSON.stringify({ imageBase64: base64, mediaType }),
       });
       const data = await res.json();
-      if (data.error) { setError(data.error); reset(); return; }
-      const identified: { name: string }[] = data.items ?? [];
-      if (identified.length === 0) {
-        setError("Couldn't identify any food. Try a clearer shot, or log manually.");
-        reset();
+
+      if (data.error) {
+        setError(data.error);
+        setStage("choose");
         return;
       }
+
+      const identified: { name: string }[] = data.items ?? [];
+      if (identified.length === 0) {
+        setError("Couldn't identify any food. Try a clearer shot or log manually.");
+        setStage("choose");
+        return;
+      }
+
       setItems(identified.map((i) => ({ name: i.name })));
-      setStage("confirm");
-    } catch {
-      setError("Something went wrong analyzing the photo.");
-      reset();
+      setStage("plate-confirm");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setStage("choose");
     }
   }
 
   async function handleLabelPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) { setMode("choose"); return; }
+    if (!file) return;
+
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    setProcessingText("Reading the nutrition label…");
     setError(null);
-    setPreviewUrl(URL.createObjectURL(file));
     setStage("processing");
+
     try {
       const { base64, mediaType } = await resizeImageToBase64(file, 1600, 0.92);
       const res = await fetch("/api/photo/label", {
@@ -122,13 +133,22 @@ export default function PhotoLogPage() {
         body: JSON.stringify({ imageBase64: base64, mediaType }),
       });
       const data = await res.json();
-      if (data.error) { setError(data.error); reset(); return; }
+
+      if (data.error) {
+        setError(data.error);
+        setStage("choose");
+        return;
+      }
+
       setLabel(data.label);
-      setLabelUnit(data.label.servingUnit ?? "g");
+      setLabelServings(1);
+      setLabelMeal(defaultMealForNow());
+      setLabelDate(todayDateInputValue());
+      setLabelTime(nowTimeInputValue());
       setStage("label-confirm");
-    } catch {
-      setError("Something went wrong reading the label.");
-      reset();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setStage("choose");
     }
   }
 
@@ -137,14 +157,7 @@ export default function PhotoLogPage() {
     setLabelSaving(true);
     setLabelError(null);
 
-    // Calculate macros scaled by number of servings
-    const factor = labelServings;
-    const gramsEquivalent = label.servingSize * factor;
-    const loggedAt = new Date(`${labelDate}T${labelTime}:00`).toISOString();
-
     try {
-      // Create a one-off custom food to log against, using per-100g values
-      // derived from the label's per-serving values.
       const per100Factor = label.servingSize > 0 ? 100 / label.servingSize : 1;
       const createRes = await fetch("/api/foods/create", {
         method: "POST",
@@ -166,18 +179,18 @@ export default function PhotoLogPage() {
       const createData = await createRes.json();
       if (createData.error) { setLabelError(createData.error); setLabelSaving(false); return; }
 
-      // Log it
+      const gramsEquivalent = label.servingSize * labelServings;
       const logRes = await fetch("/api/logs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           foodId: createData.food.id,
-          quantity: label.servingSize * factor,
-          unit: labelUnit,
+          quantity: gramsEquivalent,
+          unit: label.servingUnit ?? "g",
           gramsEquivalent,
           mealType: labelMeal,
           source: "photo",
-          loggedAt,
+          loggedAt: new Date(`${labelDate}T${labelTime}:00`).toISOString(),
         }),
       });
       const logData = await logRes.json();
@@ -185,14 +198,14 @@ export default function PhotoLogPage() {
 
       router.push("/");
       router.refresh();
-    } catch {
-      setLabelError("Something went wrong saving.");
+    } catch (err) {
+      setLabelError(err instanceof Error ? err.message : "Something went wrong.");
       setLabelSaving(false);
     }
   }
 
-  // --- Choose mode ---
-  if (mode === "choose") {
+  // CHOOSE
+  if (stage === "choose") {
     return (
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 pb-24 pt-6">
         <button onClick={() => router.push("/")} className="text-sm font-medium text-emerald-600">
@@ -200,9 +213,12 @@ export default function PhotoLogPage() {
         </button>
         <h1 className="mt-3 text-xl font-semibold text-neutral-900">Log by photo</h1>
         <p className="mt-2 text-sm text-neutral-500">What would you like to photograph?</p>
-        <div className="mt-8 space-y-3">
+
+        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+
+        <div className="mt-6 space-y-3">
           <button
-            onClick={() => { setMode("plate"); plateInputRef.current?.click(); }}
+            onClick={() => plateInputRef.current?.click()}
             className="flex w-full items-center gap-4 rounded-2xl border border-neutral-200 bg-white p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50/30"
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
@@ -217,7 +233,7 @@ export default function PhotoLogPage() {
           </button>
 
           <button
-            onClick={() => { setMode("label"); labelInputRef.current?.click(); }}
+            onClick={() => labelInputRef.current?.click()}
             className="flex w-full items-center gap-4 rounded-2xl border border-neutral-200 bg-white p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50/30"
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
@@ -234,12 +250,11 @@ export default function PhotoLogPage() {
 
         <input ref={plateInputRef} type="file" accept="image/*" capture="environment" onChange={handlePlatePhoto} className="hidden" />
         <input ref={labelInputRef} type="file" accept="image/*" capture="environment" onChange={handleLabelPhoto} className="hidden" />
-        {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
       </div>
     );
   }
 
-  // --- Processing ---
+  // PROCESSING
   if (stage === "processing") {
     return (
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 pb-24 pt-6">
@@ -247,18 +262,16 @@ export default function PhotoLogPage() {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewUrl} alt="Photo" className="mt-4 max-h-64 w-full rounded-xl object-cover" />
         )}
-        <p className="mt-6 text-center text-sm text-neutral-500">
-          {mode === "label" ? "Reading the nutrition label…" : "Looking at your plate…"}
-        </p>
+        <p className="mt-6 text-center text-sm text-neutral-500">{processingText}</p>
       </div>
     );
   }
 
-  // --- Plate confirm ---
-  if (stage === "confirm") {
+  // PLATE CONFIRM
+  if (stage === "plate-confirm") {
     return (
       <div className="mx-auto w-full max-w-md flex-1 px-4 pb-24 pt-6">
-        <button onClick={reset} className="text-sm font-medium text-emerald-600">← Retake photo</button>
+        <button onClick={goBack} className="text-sm font-medium text-emerald-600">← Retake photo</button>
         {previewUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewUrl} alt="Plate" className="mt-3 max-h-48 w-full rounded-xl object-cover" />
@@ -272,46 +285,35 @@ export default function PhotoLogPage() {
     );
   }
 
-  // --- Label confirm ---
+  // LABEL CONFIRM
   if (stage === "label-confirm" && label) {
     return (
       <div className="mx-auto w-full max-w-md flex-1 px-4 pb-24 pt-6">
-        <button onClick={reset} className="text-sm font-medium text-emerald-600">← Retake photo</button>
-
+        <button onClick={goBack} className="text-sm font-medium text-emerald-600">← Retake photo</button>
         {previewUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewUrl} alt="Label" className="mt-3 max-h-48 w-full rounded-xl object-cover" />
         )}
-
         <h1 className="mt-3 text-xl font-semibold text-neutral-900">
           {label.foodName ?? "Nutrition label"}
         </h1>
         <p className="mt-1 text-sm text-neutral-500">
-          Values read from label — adjust serving count if you had more or less than one serving.
+          Values read from label. Adjust servings if you had more or less than one.
         </p>
 
-        {/* Per-serving macro summary from label */}
         <div className="mt-4 grid grid-cols-5 gap-2 rounded-xl bg-neutral-50 p-3 text-center">
-          <div>
-            <p className="text-base font-semibold text-neutral-900">{Math.round(label.calories * labelServings)}</p>
-            <p className="text-xs text-neutral-500">kcal</p>
-          </div>
-          <div>
-            <p className="text-base font-semibold text-neutral-900">{Math.round(label.protein * labelServings)}</p>
-            <p className="text-xs text-neutral-500">protein</p>
-          </div>
-          <div>
-            <p className="text-base font-semibold text-neutral-900">{Math.round(label.carbs * labelServings)}</p>
-            <p className="text-xs text-neutral-500">carbs</p>
-          </div>
-          <div>
-            <p className="text-base font-semibold text-neutral-900">{Math.round(label.fat * labelServings)}</p>
-            <p className="text-xs text-neutral-500">fat</p>
-          </div>
-          <div>
-            <p className="text-base font-semibold text-neutral-900">{Math.round(label.fiber * labelServings)}</p>
-            <p className="text-xs text-neutral-500">fiber</p>
-          </div>
+          {[
+            { val: label.calories * labelServings, label: "kcal" },
+            { val: label.protein * labelServings, label: "protein" },
+            { val: label.carbs * labelServings, label: "carbs" },
+            { val: label.fat * labelServings, label: "fat" },
+            { val: label.fiber * labelServings, label: "fiber" },
+          ].map((m) => (
+            <div key={m.label}>
+              <p className="text-base font-semibold text-neutral-900">{Math.round(m.val)}</p>
+              <p className="text-xs text-neutral-500">{m.label}</p>
+            </div>
+          ))}
         </div>
 
         <div className="mt-4 space-y-3">
@@ -324,7 +326,7 @@ export default function PhotoLogPage() {
                 step={0.25}
                 value={labelServings}
                 onChange={(e) => setLabelServings(Number(e.target.value))}
-                className="w-24 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-24 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               />
               <span className="text-xs text-neutral-500">× {label.servingSize}{label.servingUnit} per serving</span>
             </div>
@@ -354,19 +356,8 @@ export default function PhotoLogPage() {
               Logged for <span className="text-neutral-400">(change if logging retroactively)</span>
             </label>
             <div className="mt-1 flex items-center gap-2">
-              <input
-                type="date"
-                value={labelDate}
-                max={todayDateInputValue()}
-                onChange={(e) => setLabelDate(e.target.value)}
-                className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              <input
-                type="time"
-                value={labelTime}
-                onChange={(e) => setLabelTime(e.target.value)}
-                className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
+              <input type="date" value={labelDate} max={todayDateInputValue()} onChange={(e) => setLabelDate(e.target.value)} className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none" />
+              <input type="time" value={labelTime} onChange={(e) => setLabelTime(e.target.value)} className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none" />
             </div>
           </div>
         </div>
@@ -384,5 +375,11 @@ export default function PhotoLogPage() {
     );
   }
 
-  return null;
+  // Should never reach here
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-4 pt-6">
+      <p className="text-sm text-neutral-400">Something went wrong.</p>
+      <button onClick={goBack} className="mt-4 text-sm font-medium text-emerald-600">← Go back</button>
+    </div>
+  );
 }
